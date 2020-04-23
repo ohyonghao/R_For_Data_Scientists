@@ -1,0 +1,48 @@
+---
+title: "Homework 2"
+author: "Do not include your name, keep anonymous for peer review"
+date: 'Due: Wednesday 4/29/2020 by 12:00 pm'
+output:
+  prettydoc::html_pretty:
+        theme: architect
+        highlight: github
+subtitle: 'STAT 399: Statistical Computing and Data Visualization with R'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(ggthemes)
+```
+
+## Instructions
+
+- Make a copy of this template to write out your solution, and simply knit it as `HW02.Rmd`.
+- Inside this .Rmd file do not include any personal identifier (such as your name, Odin ID, etc.). 
+- Knit your Rmd file as html and upload both the Rmd and html files with your solution to D2L in `Activities > Assignments > Homework2` before Wednesday April 29th at 12:00 pm.
+
+
+## Objectives for this week's homework
+
+1. Practice making figures in both base R and ggplot2
+2. Generate hypotheses and explore them graphically
+
+
+Write down a question or hypothesis you are interested in exploring from the *world powerplant dataset* I found in the [information is beautiful](https://informationisbeautiful.net/visualizations/mega-what-the-worlds-biggest-and-most-notable-power-plants/) webpage, which includes some nice visualizations.  The original data can be found [here](http://datasets.wri.org/dataset/globalpowerplantdatabase) along with a brief description of the data.  Note that inside of the globalpowerplant folder in RStudio Cloud (as well as in the D2L the homework folder) I provide additional documents with information that may prove useful, in particular be sure to look at the `README.txt` file, which includes the metadata (a description of the variables) in the **Fields** section.  
+
+The idea is for you to investigate your question/hypothesis graphically.  To do so, generate the figures you consider necessary -- at least two and at most 4, and note that more figures is not necessarily better, fewer but very well though-out and informative figures might do the trick. The only condition is that <span style="color:orange">at least one of your figures is built using `base R` and at least one is built in `ggplot2`.*</span>
+
+You might want to work with just a subset of the data (e.g. one particular country), or you may choose to transform or summarize your data in the way that best allows you to explore your question. All titles, axes, and legends should be labelled clearly (no raw variable names). You must have at least one graph with `facet_wrap` or `facet_grid`. You must include at least one manually specified legend. You can use other `geoms` like histograms, bar charts, add vertical or horizontal lines, etc. [You may find this data visualization cheat sheet helpful](https://www.rstudio.com/wp-content/uploads/2016/11/ggplot2-cheatsheet-2.1.pdf).
+
+Your document should be aesthetically pleasing, with some organization. You must write up your observations in words as well as showing the graphs. Use chunk options `echo` and `results` to limit the code/output you show in the `.html`.
+
+Below I load n the data, but be careful, you may need to filter out rows that have `NA`s in some of specific variables, so recall that you can test (and filter out) for `NAs` using the function `is.na`, which is vectorized (look at week 2's classnotes)!
+
+Have fun and Good Luck!!
+```{r load_data}
+power <- read.csv('globalpowerplant/global_power_plant_database.csv',
+                  na.strings = c(NA,"","NA"),
+                  header=T)
+str(power)
+```
+
