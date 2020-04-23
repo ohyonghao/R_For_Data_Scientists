@@ -1,0 +1,554 @@
+---
+title: 'Week 3: R Objects and Intro to Data Vis'
+author: "Daniel Taylor-Rodriguez"
+date: "April 14, 2020"
+output:
+  ioslides_presentation:
+   incremental: true
+subtitle: STAT 399
+---
+
+<style>
+.forceBreak { -webkit-column-break-after: always; break-after: column; }
+</style>
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+options(
+  htmltools.dir.version = FALSE, # for blogdown
+  width = 80,
+  tibble.width = 80
+)
+
+knitr::opts_chunk$set(
+  fig.align = "center"
+)
+
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(magrittr)
+library(ggplot2)
+```
+
+
+
+## Plan for this Week {.build}
+
+### <span style="color:cornflowerblue"> Part 1: wrap up base R </span>
+
+1. Finish subsetting (matrices, factors and data.frames)
+
+2. Subsetting and assignment
+
+### <span style="color:cornflowerblue"> Part 2: modern R basics </span>
+
+3. Visualization in base R 
+
+4. Visualization in ggplot2 (intro)
+
+
+## Peer Review: Grading Rubric 
+
+
+- Click [here](https://drive.google.com/drive/folders/0B7QLO8F4QBfXNnJQYzlqdmp4VGs?usp=sharing) and look for the folder with your name.  There you will find the two files (`Rmd` and `html`) you are provide a peer review for. <span style="color:orange"> 
+
+- **You must be signed with your `edu.pdx` account to access the document.**</span>
+
+
+- Type your *peer evaluation* in word making reference to the line in the Rmd fileor to the specific homework problem number to which you are alluding to.
+
+
+
+## Peer Review: Grading Rubric {.smaller}
+
+<span style="color:forestgreen">**Again, be constructive and considerate.** </span><span style="color:orange">**Use a continuous scale between 0 and 3, using the following as reference:**</span> 
+
+0 - No homework turned in.
+
+
+1 - Turned in but low effort, poorly presented with nonfunctional code and ignoring directions.
+
+
+2 - Decent effort, well presented all code works and followed directions with some minor issues.
+
+
+3 - Nailed it!
+
+
+# Data Visualization in R
+
+## Data Visualization in R before `ggplot2` {.build}
+
+- Since R is a software explicitly developed to do statistics R it comes with extensive plotting capabilities by default
+
+- <span style="color:cornflowerblue">**MANY** plotting functions are installed in the `graphics` package, which ships with base R</span>
+
+- Look into the help files for the functions in this package using `library(help = "graphics")`
+
+- Here are a few examples of visualization functions in the `graphics` package:
+
+<div class="centered">
+`plot`, `lines`, `points`,`abline`,`boxplot`, `pairs`, `matplot`, `barplot`, `curve`, `dotchart`, `pie`, `rasterImage`, `coplot`, `cdplot`, `mosaicplot`, `polygon`</span>
+</div>
+
+## Data visualization before `ggplot2` {.smaller .build}
+
+### `plot`
+
+- `plot` is generic function for plotting R objects
+
+- Functions in R can be designed in such a way that the same function can have a completely different behavior depending on the object it is used with
+
+- Here is a list with some of the objects it can be applied to
+
+```{r}
+methods(plot)
+```
+
+
+## Data visualization before `ggplot2` {.smaller .build}
+
+### `plot`
+
+The default form of the function generates *scatterplots*
+
+Its general structure is `plot(x, y, ...)`, where 
+
+- `x` is the variable in the x axis, 
+
+- `y` is the variable in the y axis, and 
+
+- `...` represents other graphical parameters (see `?par` for an extensive list)
+
+Let's do an example to see some of the options
+
+## Data visualization before `ggplot2` {.smaller .build}
+
+### Example: the `cars` dataset
+
+Let's load the built-in data `cars`, which loads as a dataframe, a type of object mentioned earlier. Then, we can look at it in a couple different ways.
+
+`data(cars)` loads this dataframe into the **Global Environment** as a *promise*. Promises are *unevaluated arguments*.
+
+```{r}
+str(cars, 5) 
+```
+
+## Data visualization before `ggplot2` {.smaller .build}
+
+### Example: the `cars` dataset {.build}
+
+```{r}
+head(cars,4) # prints first 4 rows
+```
+
+```{r}
+summary(cars) # summary stats for each var
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options
+```{r, eval=F,echo=T, fig.height=5, fig.width=5}
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options
+```{r, eval=T,echo=F, fig.height=4.5, fig.width=4.5}
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+```
+
+
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options: `type`
+
+```{r, eval=T,echo=F, fig.height=2.5, fig.width=7.5}
+par(mfrow=c(1,3))
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "type = 'p'",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "type = 'l'",
+     type = "l",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "type = 'b'",
+     type = "b",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options: `cex`
+```{r, eval=F,echo=T, fig.height=4.5, fig.width=4.5}
+obj.size <- seq(0.5,5,length.out = length(cars$speed))
+
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = obj.size, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options: `cex`
+```{r, eval=T,echo=F, fig.height=4.5, fig.width=4.5}
+obj.size <- seq(0.5,5,length.out = length(cars$speed))
+
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = obj.size, cex.axis = 1, cex.lab = 1,
+     col = "firebrick") 
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options: `col`
+```{r, eval=F,echo=T, fig.height=4.5, fig.width=4.5}
+col.vec <- rep(c("firebrick","forestgreen","cornflowerblue"),
+               times=c(sum(cars$speed<10), 
+                       sum(cars$speed>=10&cars$speed<17),
+                       sum(cars$speed>=17)))
+
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = col.vec) 
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### `plot` options: `col`
+```{r, eval=T,echo=F, fig.height=4.5, fig.width=4.5}
+col.vec <- rep(c("firebrick","forestgreen","cornflowerblue"),
+               times=c(sum(cars$speed<10), 
+                       sum(cars$speed>=10&cars$speed<17),
+                       sum(cars$speed>=17)))
+
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = col.vec) 
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### Adding a `legend`
+```{r, eval=F,echo=T, fig.height=4.5, fig.width=4.5}
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = col.vec) 
+
+legend("topleft",
+       bty = "n",
+       pch=c(16,16,16),
+       col=c("firebrick","forestgreen","cornflowerblue"),
+       legend=c("speed<10","10<=speed<17","speed>=17")) 
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### Adding a `legend`
+```{r, eval=T,echo=F, fig.height=4.5, fig.width=4.5}
+plot(x = cars$speed, y = cars$dist,
+     xlab = "Speed (mph)",
+     ylab = "Stopping distance (ft)",
+     main = "Speeds and stopping distances of cars",
+     type = "p",
+     lty = 1, lwd = 1,
+     pch = 16,
+     cex = 1, cex.axis = 1, cex.lab = 1,
+     col = col.vec) 
+legend("topleft",
+       bty = "n",
+       pch=c(16,16,16),
+       col=c("firebrick","forestgreen","cornflowerblue"),
+       legend=c("speed<10","10<=speed<17","speed>=17"))
+```
+
+
+
+## In-class exercise 1 {.smaller}
+
+Your task is to play with the `swiss` data set built into R fr 20 mins
+
+- Use `?swiss` to see what things mean in the dataset
+
+- Go to the in-class exercise Rmd document you started working on Tuesday 
+
+- Load the data using `data(swiss)`
+
+- Think of and write down in your Rmd document one or two questions you'd like to explore with these data
+
+- Use the function `plot` to explore your questions and make 2 or 3 nicely formatted plots with with the options we discussed so far (include legends, play with `col`, `cex`, `type`)
+
+
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `boxplot`
+```{r boxplotfn, echo=T, fig.height=3, fig.width=6}
+par(mfrow=c(1,2),mai=c(1,0.5,0.1,0.1))
+boxplot(decrease ~ treatment, data = OrchardSprays, col = "cornflowerblue",
+        log = "y",cex.axis=0.7,cex.lab=0.7,notch=F)
+## horizontal=TRUE, switching  y <--> x :
+boxplot(decrease ~ treatment, data = OrchardSprays, col = "cornflowerblue",
+        log = "x", horizontal=TRUE,cex.axis=0.7,cex.lab=0.7,notch=F)
+
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `curve`
+
+```{r curvefn, echo=T, fig.height=2.5, fig.width=7.5}
+par(mfrow=c(1,3),mai=c(0.9,0.4,0.1,0.1))
+curve(expr=sin, from=-2*pi, to=2*pi, xname = "t",cex.axis=0.7, cex.lab=0.7)
+curve(expr=tan, xname = "t", from=-2*pi, to=2*pi, cex.axis=0.7, cex.lab=0.7)
+myfn <- function(t){tan(t)*sin(t)}
+curve(expr=myfn, xname = "t", from=-2*pi, to=2*pi, cex.axis=0.7, cex.lab=0.7)
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `hist`
+```{r histfn, echo=T, fig.height=3, fig.width=6}
+par(mfrow=c(1,2),mai=c(1,0.5,0.1,0.1))
+x <- rchisq(1000, df = 4)
+hist(x, freq = FALSE, ylim = c(0, 0.2),col="orange",main="")
+#hist and curve combined
+hist(x, freq = FALSE, ylim = c(0, 0.2),col="orange",main="")
+lines(density(x,from=0, to=20), col = "blue3", lty = 1, lwd = 3, add = TRUE)
+```
+
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `pairs`
+
+```{r pairsfn, echo=T, fig.align='center',fig.height=4, fig.width=4}
+par(mai=c(0.1,0.1,0.1,0.1))
+pairs(iris[1:3], cex=0.5, cex.labels = 1,cex.axis=0.7,
+      pch = 21, bg = c("red", "green3", "blue")[unclass(iris$Species)])
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `dotchart`
+<div class="columns-2">
+```{r}
+VADeaths
+```
+
+```{r, eval=F, echo=T}
+par(mai=c(0.4,0.1,0.4,0.1))
+dotchart(VADeaths, bg = "skyblue",
+         cex=0.7, cex.axis=0.1,
+         main = "Death Rate VA - 1940")
+```
+<p class="forceBreak"></p>
+
+```{r dotchartfn, eval=T, echo=F, fig.align='center',fig.height=3.5, fig.width=3.5}
+par(mai=c(0.4,0.1,0.4,0.1))
+dotchart(VADeaths, bg = "skyblue",
+         cex=0.7, cex.axis=0.1,
+         main = "Death Rate VA - 1940")
+```
+</div>
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `matplot`
+
+```{r matplotfn, echo=T, fig.height=3, fig.width=6}
+par(mfrow=c(1,2),mai=c(0.4,0.4,0.1,0.1))
+sines <- outer(1:20, 1:4, function(x, y) sin(x / 20 * pi * y))
+matplot(sines, pch = 1:4, type = "o", col = rainbow(ncol(sines)),
+        cex=0.5, cex.axis=0.7)
+matplot(sines, type = "b", pch = 21:23, col = 2:5, bg = 2:5, 
+        cex=0.5, cex.axis=0.7, main = "")
+```
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `barplot`
+
+```{r barplotfn, echo=T, fig.height=3, fig.width=6}
+par(mfrow=c(1,2),mai=c(0.9,0.4,0.1,0.1))
+barplot(GNP ~ Year, data = longley, cex=0.5, cex.axis=0.7, cex.lab=0.7)
+barplot(cbind(Employed, Unemployed) ~ Year, data = longley, cex = 0.5,
+        cex.axis=0.7,cex.lab=0.7)
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+### Other plots: `mosaic`
+
+```{r mosaicfn, echo=T, fig.height=4, fig.width=4}
+par(mfrow=c(1,1),mai=c(0.9,0.4,1,0.4))
+mosaicplot(~ Sex + Age + Survived, data = Titanic, main="",color = TRUE)
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### <span style="color:cornflowerblue">Figures with multiple panels:</span> `mfrow` (or `mfcol`)
+```{r, eval=F,echo=T, fig.height=2.5, fig.width=7.5}
+par(mfrow=c(1,3))
+plot(x = cars$speed, y = cars$dist,xlab = "", ylab = "", main = "",
+     type = "p", pch = 16, col = "firebrick") 
+plot(x = cars$speed, y = cars$dist,xlab = "", ylab = "", main = "",
+     type = "p", pch = 16, col = "firebrick") 
+abline(reg=lm(dist~speed,data=cars),col="forestgreen")
+plot(x = cars$speed, y = cars$dist,xlab = "", ylab = "", main = "",
+     type = "p", pch = 16, col = "firebrick") 
+lines(lowess(cars),col="cornflowerblue")
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### <span style="color:cornflowerblue">Figures with multiple panels:</span> `mfrow` (or `mfcol`)
+```{r, eval=T,echo=F, fig.height=2.8, fig.width=8.4}
+par(mfrow=c(1,3))
+plot(x = cars$speed, y = cars$dist,xlab = "", ylab = "", main = "",
+     type = "p", pch = 16, col = "firebrick") 
+plot(x = cars$speed, y = cars$dist,xlab = "", ylab = "", main = "",
+     type = "p", pch = 16, col = "firebrick") 
+abline(reg=lm(dist~speed,data=cars),col="forestgreen",lwd=2)
+plot(x = cars$speed, y = cars$dist,xlab = "", ylab = "", main = "",
+     type = "p", pch = 16, col = "firebrick") 
+lines(lowess(cars),col="cornflowerblue",lwd=2)
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### <span style="color:cornflowerblue">Figures with multiple panels:</span> the `layout` function
+
+```{r, eval=FALSE}
+layout(mat, 
+       widths = rep.int(1, ncol(mat)),
+       heights = rep.int(1, nrow(mat)), 
+       respect = FALSE)
+```
+
+## Data visualization before `ggplot2` {.smaller}
+
+### <span style="color:cornflowerblue">Figures with multiple panels:</span> the `layout` function
+
+```{r, echo=T,eval=T,fig.height=4,fig.width=4}
+nf <- layout(matrix(c(2,0,1,3),2,2,byrow = TRUE), widths=c(3,1), heights=c(1,3), TRUE)
+layout.show(nf)
+```
+
+
+## Data visualization before `ggplot2` {.smaller}
+
+### <span style="color:cornflowerblue">Figures with multiple panels:</span> the `layout` function
+
+```{r, echo=F,eval=T, fig.height=4.5,fig.width=4.5}
+nf <- layout(matrix(c(2,0,1,3),2,2,byrow = TRUE), c(3,1), c(1,3), TRUE)
+#sample values from two normal distributions
+x <- pmin(3, pmax(-3, stats::rnorm(50)))
+y <- pmin(3, pmax(-3, stats::rnorm(50)))
+
+xhist <- hist(x, breaks = seq(-3,3,0.5), plot = FALSE)
+yhist <- hist(y, breaks = seq(-3,3,0.5), plot = FALSE)
+top <- max(c(xhist$counts, yhist$counts))
+
+xrange <- yrange <- c(-3, 3)
+par(mar = c(3,3,1,1))
+plot(x, y, xlim = xrange, ylim = yrange, xlab = "", ylab = "")
+par(mar = c(0,3,1,1))
+barplot(xhist$counts, axes = FALSE, ylim = c(0, top), space = 0)
+par(mar = c(3,0,1,1))
+barplot(yhist$counts, axes = FALSE, xlim = c(0, top), space = 0, horiz = TRUE)
+```
+
+
+## In-class exercise 2 {.smaller}
+
+
+- Extend your exploration of `swiss` by using 2 or three of the figure types discussed after `plot`
+
+- Make a figure with two panels (1 row by two columns) using `mfrow`
+
+- Make a figure with 3 different plots using `layout`
+
+
+<!-- ## Acknowledgements {.larger} -->
+
+<!-- <span style="color:blue">Materials above are adapted from the following sources:</span> -->
+
+
+<!-- - [Advanced R book](https://adv-r.hadley.nz/vectors-chap.html) -->
+<!-- - <span style="color:forestgreen">Colin Rundel's notes from Duke University</span> -->
+<!-- - [Kaplan et al, 2020](https://cran.r-project.org/web/packages/mosaic/vignettes/Resampling.pdf) -->
+<!-- - [UW SISG Permutation Tests](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf) -->

@@ -1,0 +1,221 @@
+---
+title: "In-class Exercise Week 3"
+author: "David Post"
+date: "4/14/2020"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Permutation test for two group means
+
+(submit to D2L after Thursday's (April 16th) lecture and before Tuesday April 21st at noon)
+
+## Sleep vs Caffeine experiment
+
+In an experiment on memory (Mednicj et al, 2008), students were given lists of 24 words to memorize. After hearing the words they were assigned at random to different groups. One group of 12 students took a nap for 1.5 hours while a second group of 12 students stayed awake and was given a caffeine pill. 
+
+These data contain the number of words each participant was able to recall after the break:
+```{r}
+Memory <- read.csv("http://www.mosaic-web.org/go/datasets/SleepCaffeine.csv")
+```
+
+
+You want to test whether the data indicate a difference in mean number of words recalled between the two treatments.  Let's use a *permutation test* to do so.
+
+## Interlude: Permutation Tests
+
+In testing a null hypothesis we need a test statistic that will have different values under the *null hypothesis* (the means of the two groups are the same) and the *alternative hypothesis* we care about (i.e., the means are different).
+
+To test the hypothesis, we need to know the sampling distribution of the test statistic when the null hypothesis is true. The p-value tells us how likely it is (under the null hypothesis) for the test statistic to be at least as extreme as the one we observed, if the null hypothesis is true.
+
+Because of this, if the null hypothesis is true, then shuffled data sets should look like the real data, otherwise they should look different from the real data. A permutation test gives a simple way to compute the sampling distribution for any test statistic, under the null hypothesis that the treatment has absolutely no effect on the outcome, and the ranking of the real test statistic among the shuffled test statistics allows us to obtain a p-value.
+
+From the theory, we know that the distribution of a difference in the means and we could just do a t-test.  For the t-test to be valid we need enough samples so the Central Limit Theorem kicks in. In our case, a t-test might not work since we have only a few subjects. More information on permutation tests [here](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf).
+
+
+## Questions
+
+Subset the data by groups and use R functions such as `mean`, `sd`, `quantile`, `histogram`, `boxplot` ... (pick your own), to describe the observed responses for each group
+
+1. Calculate the observed difference (Caffeine-Sleep) between the group means
+
+```{r}
+obs.means <- c(Caffeine = mean(Memory[Memory$Group == "Caffeine",]$Words),
+               Sleep    = mean(Memory[Memory$Group == "Sleep",   ]$Words))
+
+obs.diff <- obs.means[1] - obs.means[2]
+
+```
+2. Create a function (call it `perm_diff`) to randomly permute the 12 *Sleep* and 12 *Caffeine* treatment labels and calculate the means for each group under this label assignment
+
+```{r}
+perm_diff <- function(Memory){
+  perm_labels <- Memory$Group[sample(1:24)]
+  return(mean(Memory$Words[perm_labels=="Caffeine"] - mean(Memory$Words[perm_labels!="Caffeine"])))
+}
+```
+
+3. Use `perm_diff` to generate 10000 permutations and store the difference between the means in a vector called `diff_vector`.
+
+```{r}
+diff_vector <- replicate(1000, perm_diff(Memory))
+```
+
+4. Use the function `quantile` with the vector `diff_vector` to see a quick summary of the permuted differences
+
+```{r}
+quantile(diff_vector)
+```
+
+5. Plot the *sampling distribution* of the differences using the function `hist`
+```{r}
+hist(diff_vector, main="Permuted sampling of Caffeine and Sleep groups",
+     xlab="Diff of Means")
+```
+6. Use the function `abline` to see where the observed difference falls in the sampling distribution you plotted above (by default `abline` is added to your last plot)
+
+```{r}
+hist(diff_vector, main="Permuted sampling of Caffeine and Sleep groups",
+     xlab="Diff of Means")
+abline(v=obs.diff, col="red")
+```
+
+7. Calculate the proportion of times that the observed differences are smaller (try greater) than the ones simulated
+
+```{r}
+mean(obs.diff < diff_vector)
+```
+```{r}
+mean(obs.diff > diff_vector)
+```
+
+8. State you conclusions, is there a difference between the two treatments?
+
+Yes, there is a difference between the two treatments.
+
+## In-class exercise 1 {.smaller}
+
+Your task is to play with the `swiss` data set built into R fr 20 mins
+
+- Use `?swiss` to see what things mean in the dataset
+
+- Go to the in-class exercise Rmd document you started working on Tuesday 
+
+- Load the data using `data(swiss)`
+
+- Think of and write down in your Rmd document one or two questions you'd like to explore with these data
+
+- Use the function `plot` to explore your questions and make 2 or 3 nicely formatted plots with with the options we discussed so far (include legends, play with `col`, `cex`, `type`)
+
+### My Attempt
+
+```{r}
+data(swiss)
+```
+
+Does education correlate with receiving highest marks on army examinations?
+
+```{r}
+plot(x=swiss$Examination, y=swiss$Education, 
+     xlab="Examination", ylab="Education",
+     col= 2, type='p', pch=16)
+legend("topleft", 
+       bty = "o",
+       lty = 1,
+       legend=c( "Regression", "lowess"), col = 3:4)
+title("Examining Exam Scores and Education")
+abline(lm(swiss$Examination~swiss$Education), col=3)
+lines(lowess(swiss$Examination,swiss$Education), col=4)
+     
+```
+
+Try it using formula:
+
+```{r}
+plot(swiss$Education~swiss$Examination, 
+     xlab="Examination", ylab="Education",
+     col= 2, type='p', pch=16)
+legend("topleft", 
+       bty = "o",
+       lty = 1,
+       legend=c( "Regression", "lowess"), col = 3:4)
+title("Examining Exam Scores and Education Using Formula")
+abline(lm(swiss$Examination~swiss$Education), col=3)
+lines(lowess(swiss$Examination,swiss$Education), col=4)
+     
+```
+
+```{r}
+pairs(~Examination + Education,
+      labels = c("Examination", "Education"),
+      data=swiss)
+title("Pairwise Comparison: Examination and Education")
+```
+```{r}
+boxplot(swiss, col= 2:7, ylab="Percentage")
+title("Simple Boxplot of Swiss Data")
+```
+
+## In-class Exercise 2
+
+### Make a figure with two panels using mfrow
+
+```{r functions are first-class objects}
+
+# A function that takse an optional argument and a title and returns a function that 
+# takes no arguments but appends the argument given to it to the end with the given
+# title.
+edex <- function(options=NA,Title=""){
+    function(){
+      plot(swiss$Education~swiss$Examination, 
+         xlab="Examination", ylab="Education",
+         col= 2, type='p', pch=16)
+      legend("topleft", 
+           bty = "o",
+           lty = 1,
+           legend=c( "Regression", "lowess"), col = 3:4)
+      title(Title)
+      
+      # o isn't needed, it just suppresses the output of options
+      try(options, silent = TRUE)
+  }
+}
+
+# edex function with no additional arguments
+ed_w_noline <- edex(Title="No Line")
+
+# edex function with an added line as the argument
+ed_w_regress <- edex(abline(lm(swiss$Examination~swiss$Education), col=3),
+                     Title="Regression")
+
+# edex function with a different added line
+ed_w_lowess <- edex(lines(lowess(swiss$Examination,swiss$Education), col=4),
+                    Title="lowess")
+
+# edex function with multiple added lines
+ed_w_morelines <- edex( c(abline(lm(swiss$Examination~swiss$Education), col=3),
+                          lines(lowess(swiss$Examination,swiss$Education), col=4)),
+                        Title="Multi-line")
+# Call these functions
+par(mfrow=c(2,2))
+ed_w_noline()
+ed_w_regress()
+ed_w_lowess()
+ed_w_morelines()
+
+```
+
+### Using  to make a figure with 3 different plots
+
+```{r}
+layout(mat=matrix(c(1,0,3,2),2,2), widths = c(4,4), heights = c(4,4), TRUE )
+ed_w_morelines()
+ed_w_regress()
+```
+It's sort of interesting that the lines don't show up in this layout.
