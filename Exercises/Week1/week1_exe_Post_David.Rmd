@@ -1,0 +1,187 @@
+---
+title: "Week1_exe_Post_D"
+author: "David Post"
+date: "4/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set 1 -- Exercise 1  {.build .smaller}
+
+Write a set of conditional(s) that satisfies the following requirements:
+
+* If `x` is greater than 3 and `y` is less than or equal to 3 then print "Hello world!"
+
+* Otherwise if `x` is greater than 3 print "!dlrow olleH"
+
+* If `x` is less than or equal to 3 then print "Something else ..."
+
+* Stop execution if x is odd and y is even and report an error, don't print any of the text strings above.
+
+Test out your code with
+
+1. `x=1` and `y=2`
+2. `x=1` and `y=3` 
+3. `x=3` and `y=3`
+
+```{r}
+check_conditions <- function( x, y ){
+
+  if( (x %% 2) && !(y %% 2) )
+      stop("Error, x is odd and y is even")
+
+  if( ( x > 3 ) && ( y <= 3 ) ) {
+      print("Hello World!")
+  }else if ( x > 3 ){
+    print("!dlroW olleH")
+  }
+  
+  if( x <= 3 )
+    print("Something else...")
+}
+data1 <- vector( mode="list", length=3)
+data1[[1]] <- c(1,2)
+data1[[2]] <- c(1,3)
+data1[[3]] <- c(3,3)
+
+# This doesn't work because the first dataset
+# runs into the stop clause and ends any subsequent
+# execution
+
+#for( i in data1){
+#  check_conditions(i[[1]],i[[2]])
+#}
+```
+
+```{r, error=TRUE}
+#check_conditions(data1[[1]][[1]],data1[[1]][[2]])
+```
+```{r}
+check_conditions(data1[[2]][[1]],data1[[2]][[2]])
+```
+```{r}
+check_conditions(data1[[3]][[1]],data1[[3]][[2]])
+```
+
+## Set 1 -- Exercise 2 {.build .smaller}
+
+Write a set of conditional(s) in `R` to solve equations of the form $$a x^2 + b x + c,$$ which accounts for possible errors that might occurr in the calculation (you may use `if`, `else if`, `else`, `stop`, `stopifnot`)
+
+Test out your code with
+
+1. `a=1`, `b=0` and `c=1`
+2. `a=1`, `b=0` and `c=-1`
+3. `a=9`, `b=4` and `c=1`
+4. `a=0`, `b=3` and `c=3`
+4. `a=1`, `b=-4` and `c=4`
+
+
+
+```{r, error=TRUE}
+quadratic <- function(a,b,c){
+  deter <- b*b-4*a*c
+  stopifnot( b*b-4*a*c > 0 )
+  if( deter < 0 )
+    return(-1)
+  
+  # Update the determinant to be the squareroot of
+  # the determinant. If we've made it this far then
+  # we know we stay within our field.
+  deter <- sqrt(deter)
+  first <- (-b + deter)/2 
+  second <- (-b - deter)/2
+  if( first == second ){
+    cat("Single root: ", first, "\n")
+  }else{
+    cat("First root: ", first, "\n")
+    cat("Second root:", second, "\n")
+  }
+}
+
+
+quadraticv <- function(v){
+  quadratic(v[[1]], v[[2]], v[[3]])
+}
+  
+data <- vector(mode="list", length=5)
+data[[1]] <- c( 1,0,1)
+data[[2]] <- c( 1,0,-1)
+data[[3]] <- c(9,4,1)
+data[[4]] <- c(0,3,3)
+data[[5]] <- c(1,-4,4)
+
+# Because of the stop statement this for loop
+# will not work for our intended purposes.
+
+#for( i in data ){
+#  quadraticv(i)
+#}
+
+```
+
+```{r, error=TRUE}
+  #quadraticv(data[[1]])
+```
+
+```{r}
+  quadraticv(data[[2]])
+```
+
+```{r, error=TRUE}
+  #quadraticv(data[[3]])
+```
+
+```{r}
+  quadraticv(data[[4]])
+```
+
+```{r, error=TRUE}
+  #quadraticv(data[[5]])
+```
+
+## Set 2 -- Exercise  1 {.smaller}
+
+Below is a vector containing all prime numbers between 2 and 100:
+
+<div class="centered">
+```r
+primes = c( 2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 
+      43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97)
+```
+</div>
+
+If you were given the vector 
+
+<div class="centered">
+`x = c(3,4,12,19,23,51,61,63,78)`, 
+</div>
+write the R code necessary to print only the values of `x` that are *not* prime (without using subsetting or the `%in%` operator). 
+
+Your code should use *nested* loops to iterate through the vector of primes and `x`.
+```{r}
+primes = c( 2,  3,  5,  7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 
+      43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97)
+
+x = c(3,4,12,19,23,51,61,63,78)
+
+
+for( i in x ){
+  isprime <- TRUE # Reset sentinal
+  for( prime in primes ){
+    if( i == prime ){
+      isprime <- FALSE # Found a prime
+      break; # Short circuit out of inner loop
+    }
+  }
+  
+  if( isprime )
+    print( i )
+}
+
+```
+
+
+
