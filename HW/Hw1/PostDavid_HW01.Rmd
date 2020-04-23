@@ -1,0 +1,379 @@
+---
+title: "Homework 1"
+author: "Do not include your name, keep anonymous for peer review"
+date: 'Due: Tuesday 4/14/2020 by 10:00 pm'
+output:
+  html_document: default
+subtitle: 'STAT 399: Statistical Computing and Data Visualization with R'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Instructions
+
+- Make a copy of this template to write out your solution, and rename it before  knitting it the first time as file as `LastnameFirstname_HW01.Rmd`, where you should replace `Lastname` and `Firstname` by your own last name and first name, respectively.
+- Inside this .Rmd file do not include any personal identifier (such as your name, Odin ID, etc.). 
+- Knit your Rmd file as html and upload both the Rmd and html files with your solution to D2L in `Activities > Assignments > Homework1` before Tuesday April 14th at 4:30 pm.
+
+
+## Objectives for this week's homework
+
+1. **R Programming Objectives**
+ - Practice subsetting
+ - Using loops
+ - Creating your own functions
+ - Working with data frames in R
+2. **Statistics Objectives **
+ - Think about *statistical independence*
+ - Obtain frequencies from categorical data
+ - Obtain conditional probabilities with real data
+ - Learn how to simulate data under particular assumptions and derive meaningful inference from it
+
+
+
+We do not expect to resolve this controversy, but in this homework we'll take a stab at the problem using two approaches that could be considered to tackle questions like this. 
+
+Basketball players who make several baskets in succession are described as having a *hot hand*. Fans and players have long believed in the hot hand phenomenon, which refutes the assumption that each shot is independent of the next. However, a 1985 paper by Gilovich, Vallone, and Tversky collected evidence that contradicted this belief and showed that successive shots are independent events ([http://psych.cornell.edu/sites/default/files/Gilo.Vallone.Tversky.pdf](http://psych.cornell.edu/sites/default/files/Gilo.Vallone.Tversky.pdf)). This paper started a great controversy that continues to this day, as you can see by Googling *hot hand basketball*.
+
+Our investigation will focus on Kobe Bryant's performance with the Los Angeles Lakers in the 2009 NBA finals when playing against the Orlando Magic, which earned him the title *Most Valuable Player*.  Many spectators commented on him having a *hot hand*. Let's load some data from those games and look at the data structure with `str`.
+
+<div style="small">
+```{r loadkobe-data, eval=TRUE, results='markup'}
+load("kobe.RData")
+str(kobe)
+```
+</div>
+
+In this data frame, each row contains a shot taken by Kobe Bryant. If he hit the shot (made a basket), a hit, `H`, is recorded in the column named `basket`, otherwise a miss, `M`, is recorded.
+
+Just looking at the string of hits and misses, it can be difficult to gauge whether or not it seems like Kobe was shooting with a hot hand. One way we can approach this is by considering the belief that hot hand shooters tend to go on shooting streaks. For this lab, we define the length of a shooting streak to be the *number of consecutive baskets made until a miss occurs*.
+
+For example, in Game 1 Kobe had the following sequence of hits and misses from 
+his nine shot attempts in the first quarter:
+
+\[ \textrm{H M | M | H H M | M | M | M} \]
+
+To verify this use the following command:
+
+```{r first9, eval=FALSE}
+kobe$basket[1:9]
+```
+
+Within the nine shot attempts, there are six streaks, which are separated by a "|" above. Their lengths are one, zero, two, zero, zero, zero (in order of occurrence).
+
+### Question 1
+
+Think about what a streak of length 0, length 1, length 2, etc. mean (i.e. how many hits and misses are in a streak of length $m=0,1,2,\ldots$). Using as input the variable or variables from the `kobe` data that you consider necessary, build the function `get_streak`, which returns the length of each streak. 
+
+**Answer**
+
+```{r make-fn-get_streak, eval=T}
+# Summary: Calculates the length of streaks of a given vector of shots
+# Inputs:
+#   baskets = a vector of shots made with "H" indicating a hit and "M" indicating a miss
+# Outputs:
+#   a vector of the length of each streak with 0 for each miss
+get_streak <- function(baskets)
+{
+  # Setup empty vector
+  streak_length <- c()
+  
+  # Start streak count at 0
+  streak_count <- 0L
+  for(i in 1:length(baskets) ){
+    if( baskets[i] == "H" ){
+      streak_count <- streak_count + 1
+    }else{
+      # Since we have a miss, record streak
+      streak_length[length(streak_length) + 1] <- streak_count
+      # Reset counter to 0
+      streak_count <- 0L
+    }
+  }
+  
+  # Check if we ended on a hit, in which case it did not get recorded
+  # into the streak_length vector yet
+  if( streak_count > 0 )
+    streak_length[length(streak_length) + 1] <- streak_count
+  
+  # Return vector of all streaks
+  return(streak_length)
+}
+
+```
+
+
+Now, use your function `get_streak` to calculate the lengths of all shooting streaks and then use the R functions `summary`, `quantile` and `barplot` to describe the distribution of Kobe's streak lengths from the 2009 NBA finals (use `?` to find out about their usage). What was his typical streak length? How long was his longest streak of baskets?
+
+**Answer**
+
+**Summary**
+```{r, eval=T}
+streaks <- get_streak(kobe$basket)
+
+summary(streaks)
+```
+
+**Quantile**
+```{r, eval=T}
+quantile(streaks)
+```
+**Barplot**
+```{r, eval=T}
+barplot(streaks)
+```
+
+### Question 2
+
+So Kobe had some long shooting streaks, but are they long enough to support the belief that he had *hot hands*? What can we compare them to? Consider the idea of *statistical independence*. A shooter with a hot hand will have shots that are *not* independent of one  another. Specifically, if the shooter makes their first shot, the hot hand model says they will have a *higher* probability of making their second shot. 
+
+During Kobe's career, the percentage of time he makes a basket (i.e. his shooting percentage) is about 45%, or equivalently  \[ P(\textrm{shot 1 = H}) = 0.45. \] If hot hands is really a thing, then when Kobe makes the first shot and has a hot hand (*not* independent shots), then  the probability that he makes his second shot would go up to, let's say, 60%,  \[ P(\textrm{shot 2 = H} \, | \, \textrm{shot 1 = H}) = 0.60. \] Because of these increased probabilites, you'd expect Kobe to have longer streaks. Now, if *hot hands* are just a myth, and each shot is independent of the next. When Kobe hits his first shot, the probability that he makes the second is still 0.45. \[ P(\textrm{shot 2 = H} \, | \, \textrm{shot 1 = H}) = 0.45. \] 
+
+Now, having expressed the problem in this way we may assess if Kobe's shooting streaks are long enough to indicate that he has hot hands.  Here are two possible ways: 1) calculating the conditional probabilities and  2) comparing Kobe's streak lengths to someone without hot hands (a simulated independent shooter). 
+
+#### Part 2.a -- Conditional probabilities 
+
+1. With the data, a logical statement, and the function `mean`, first calculate the total percentage of shots that resulted in a basket in the 2009 NBA finals, as \[\frac{\#\textrm{ hits}}{\textrm{total\; \#\; shots}}\] 
+
+**Answer**
+
+One way to do this is to map the data to numerical values.
+
+```{r, eval=T}
+# One way to do this is to map the data to numerical values
+# with H=1 and M=0.
+basket <- kobe$basket
+basket[basket=="H"] <- 1
+basket[basket=="M"] <- 0
+basket <- as.integer(basket)
+mean(basket)
+```
+
+
+Another way would be to use the information we already have from
+the `get_streak` function.
+
+```{r, eval=T}
+sum(streaks)/length(kobe$basket)
+```
+
+This makes me happy that the numbers worked out the same, showing that both methods can be used to find the same information.
+
+
+2. We need to filter out the streaks that had at least the first shot resulting in a Hit -- by doing this we are conditioning the data to make the conditional statement. Since those streaks in which Kobe made the first shot have two shots or more, use the variable "shot.num" in the dataset to calculate $$P(\textrm{shot 2 = H} \, | \, \textrm{shot 1 = H})=\frac{\# (\textrm{shot 2 = H} \cup \textrm{shot 1 = H)}}{ \# (\textrm{shot 2 = H} \cup \textrm{shot 2 = M})}=\frac{\# \textrm{shot 2 = H}}{ \# \textrm{ shot 2}}$$ by identifying those observations corresponding to the second shots (i.e., those with "shot.num==2").
+
+**Answer**
+
+If I understand this correctly, the ones with the second shot being hits are exactly those ones where the length of the streak is greater than or equal to 2. The denominator seems unclear. Perhaps it is all second shots.
+
+```{r, eval=T}
+length(streaks[streaks>=2])/length(streaks[streaks>0])
+```
+
+From this it would seem that he did worse on second shots than he did on shots on average.
+
+My calculation may be flawed as perhaps it should be counted as the streak length minus one for the shot.num==2. If we first remove the zeros from `streaks` we should be able to then do that.
+
+```{r,eval=T}
+# Summary: Calculates whether a shot is a first, second, or neither in a streak. See Outputs for more details.
+# Inputs:
+#   baskets: a vector of shots made with "H" is a hit, and "M" is a miss
+# Outputs:
+#  a vector of the shot number in a streak as either
+#    1: first shot of a streak
+#    2: any shot following an "H"
+#    0: an "M" when the previous shot is also an "M"
+calc_shot <- function(baskets){
+  streak_started <- 0
+  
+  shot.num <- c()
+  for( i in 1:length(baskets) ){
+    # Shot made it, increment then set
+    if( baskets[i] == "H" ){
+      streak_started <- streak_started + 1
+      shot.num[i] <- streak_started
+    # Shot missed ending the streak, increment shot number then reset
+    }else if( streak_started ){
+        shot.num[i] <- streak_started + 1
+        streak_started <- 0
+    # Shot missed last shot and this, keep at 0
+    }else{
+      shot.num[i] <- 0
+    }
+  }
+  
+  # return the vector
+  return(shot.num)
+}
+
+```
+
+Actually, I think the idea might still be wrong, it's missing the ones that are second shots at the end of the streak. Now the understanding is slowly starting to come. We want to make something similar to `get_streak` but have it instead convert it to what shot it is. We can do this by adding a column to the dataframe.
+
+```{r,eval=T}
+kobe <- cbind(kobe,shot.num=calc_shot(kobe$basket))
+```
+
+Now we can run the calculation with the data frame.
+
+```{r, eval=T}
+# Summary: Calculates the probability of a second shot being a hit given the first shot was.
+# Input:
+#   player = a dataframe with columns c("basket", "shot.num")
+# Output:
+#   a single numeric value of P( shot 2 = H | shot 1 = H )
+second_shot <- function(player)
+{
+  length(player[player$shot.num[player$shot.num==2 & player$basket=="H"]])/length(player[player$shot.num[player$shot.num==2]])  
+}
+
+```
+
+```{r,eval=T}
+second_shot(kobe)
+```
+
+Similar result here, slightly higher, but doesn't change that Kobe is less likely to make a second basket after making one.
+
+
+3. Is there evidence to think that Kobe has *hot hands*?  How reliable is this conclusion? Provide an objective argument to justify your answer.
+
+**Answer**
+
+Looking at the likelyhood that he makes a basket given that he just made one it would appear that he is less likely to make one, thus not having the so called *hot hands*. There are many other factors that probably play into this. Time between shots, losing streaks, shots made by the other team, could all factor into a persons psych and influence their confidence.
+
+That the second shot likelihood is less than the independent overall shots may indicate instead an idea of *cold hands*.
+
+
+#### Part 2.b -- Simulating independent shooters
+
+The second alternative is to compare Kobe's streak lengths to the streak lengths of shooters without hot hands, or in other words to independent shooters. We don't have any data from shooters we know to have independent shots, but this type of data is very easy to simulate in R. In a simulation, you set the ground rules of a random process and then the computer uses random numbers to generate an outcome that adheres to those rules.  To simulate a single shot from an independent shooter with a shooting percentage of 50% we can use the code below (switch the chunk option `eval=FALSE` to `eval=TRUE` so that this chunk is evaluated). 
+
+```{r sim-basket, eval=F}
+outcomes <- c("H", "M")
+sample(outcomes, size = 1, replace = TRUE, prob = c(0.5,0.5))
+```
+
+
+*Keep in mind that to make a valid comparison between Kobe and our simulated independent shooter, we need to align both their shooting percentage and the number of attempted shots.*
+
+If you want to learn more about `sample` or any other function, recall that you 
+can always check out its help file.
+
+```{r help-sample, eval=FALSE,tidy = FALSE}
+?sample
+```
+
+Work on the following problems:
+
+1. Simulate 133 shots from an independent shooter *comparable* to Kobe and using `calc_streak`, compute the streak lengths of this independent shooter.
+2. Use the R functions `table` and `quantile` to compare the streak length distribution of Kobe and that for this independent shooter
+3. Build the R function `sim_generation`, which takes the number of independent shooters ($N$) to simulate, the number of shots taken by each shooter ($m$), and the shooting percentage ($perc$); and returns a data frame containing the outcomes for all shot taken by a single shooter in each row.  
+4. Use the function `sim_generation` to simulate $N=500$ shooters taking $m=133$ shots and $perc=0.45$. 
+5. Get creative, use the results from the previous exercise to evaluate if Kobe has in fact hot hands.  For this you may use any R function of your choice, some options are `quantile`, `mean`, `median`, `histogram`, `barplot`.
+
+**Answer**
+1. First we'll create a function to run a single simulation.
+```{r, eval=T}
+# Summary: Simulates an independent player based on given inputs.
+# Inputs:
+#   player = a player data frame with columns c("basket")
+#   perc = Shooting percentage on the interval [0,1]
+#   use_player_perc = Indicates if the percentage should be calculated from the player data frame and used instead
+# Outputs:
+#   A simulated independent player with the given shooting percentage
+sim_basket <- function(player, perc = 0, use_player_perc = T)
+{
+  outcomes <- c("H", "M")
+
+  # size is the same as the player given
+  # if use_player_perc is True, then the probability is the same as the player given
+  # or else probability = perc given
+  if( use_player_perc ){
+    p <- length(player$basket[player$basket == "H"])/length(player$basket)
+  }else{
+    p <- perc
+  }
+  
+    indy_shooter <- data.frame( basket = sample(outcomes, size = length(player$basket), replace = TRUE, prob = c(p,1-p)), stringsAsFactors = F)
+  
+  indy_shooter <- cbind(indy_shooter, shot.num = calc_shot(indy_shooter$basket))
+  return(indy_shooter)
+}
+```
+
+We can now run the simulation and get the streak length.
+
+```{r, eval=T}
+indy <- sim_basket(kobe)
+
+indy_streak <- get_streak(indy$basket)
+```
+
+2. Comparing the lengths
+```{r,eval = T}
+
+print("Indy")
+table(indy_streak)
+quantile(indy_streak)
+print("Kobe")
+table(streaks)
+quantile(streaks)
+```
+
+```{r, eval=T}
+# Summary: Runs a given number of simulations for independent shooters
+# Inputs:
+#   n = number of independent shooters
+#   m = number of shots taken for each shooter
+#   perc = shooting percentage
+#
+# Outputs: 
+#   data frame with shots taken for each shooter in each row
+sim_generation <- function(n, m, perc){
+  
+  
+  player <- data.frame(basket=1:m)
+  shots <- c()
+  seconds <- c()
+  for( i in 1:n ){
+    curr_player <- sim_basket(player = player, perc = perc, use_player_perc = F)
+    shots[i] <- length(curr_player$basket[curr_player$basket == "H"])/length(curr_player$basket)
+    seconds[i] <- second_shot(curr_player)
+  }
+  
+  df <- data.frame( outcome=shots, second_shots = seconds )
+  return(df)
+}
+  
+```
+
+3. Now run our simulation with $N=500$, $m=133$, and $perc=0.45$
+
+```{r, eval=T}
+results <- sim_generation( 500, 133, 0.45)
+```
+
+```{r, eval=T}
+median(results$outcome)
+mean(results$outcome)
+hist(results$outcome)
+```
+
+We see that simulating 500 players with the same number of shots and the same hit percentage the results average out to each shot being independent. The histogram results looks to be resembling a normal distribution. This isn't the surprising bit since we are running a simulator on independent shots. Now let's look at the second shot column.
+
+```{r, eval=T}
+median(results$second_shots)
+mean(results$second_shots)
+hist(results$second_shots)
+```
+
+We see that the second shots for the 500 simulated indpendent shooters comes out the same as all the shots, indicating that the second shots are independent from previous shots.
+
+**This homework was created by adapting materials from**
+
+<div id="license">
+OpenIntro, which is released under a [Creative Commons Attribution-ShareAlike 3.0 Unported](http://creativecommons.org/licenses/by-sa/3.0).
+</div>
