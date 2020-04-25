@@ -1,0 +1,123 @@
+---
+title: "In-class Exercise Week 4"
+author: "David Post"
+date: "4/21/2020"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gapminder)
+library(ggplot2)
+
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(magrittr)
+library(ggplot2)
+library(gapminder)
+library(shiny)
+library(ggthemes)
+```
+
+# Tuesday Lecture: playing with the gapminder data
+
+Explore other relationships in the `gapminder` data using what you learned today, could be considering other variables in the data set, or using an alternative geometry or faceting with other variables. Just make one figure, but using effectively as many of the concepts you learned as possible.
+
+[This data visualization cheat sheet might be helpful](https://www.rstudio.com/wp-content/uploads/2016/11/ggplot2-cheatsheet-2.1.pdf)
+
+Here is the data
+```{r}a
+data(gapminder)
+```
+
+```{r}
+rbind(head(gapminder,5), tail(gapminder,5))
+```
+
+```{r}
+life.plot <- ggplot(data = gapminder,
+       aes(x = year, y= lifeExp,
+           group = country,
+           color = continent)) +
+  geom_line(lwd = 0.3) +
+  xlab("Year") + ylab("Life Expentancy") +
+  ggtitle("Life exectancy over time") +
+  theme_bw(base_size = 8) +
+  facet_wrap(~ continent) +
+  theme( legend.position = c(0.8,0.25))
+```
+
+Now can we switch out stuff, or only add?
+
+```{r}
+life.plot + theme(legend.position = "bottom")
+```
+
+Yeah, so apparently we can override layers that were added.
+
+```{r}
+# Let's load our options first then apply them
+options <- list(geom_line(lwd = 0.3), xlab("Year"), ylab("Life Expentancy"),
+                ggtitle("Life Expectancy over time"),
+                theme_bw(base_size=8),
+                facet_grid( cols = vars(continent)),
+                geom_line(stat = "smooth", method = "loess", 
+                  aes(group = continent, color = continent)) )
+optioned.plot <- ggplot(data = gapminder, aes(x=year, y=lifeExp, gorup = country, color = continent))
+for( i in  seq_along(length(options))){
+  optioned.plot <- optioned.plot + options[i]
+}
+
+optioned.plot 
+```
+
+There does appear to be some behavior that doesn't work this way. The `facet_grid` doesn't seem to follow through.
+
+```{r}
+my.first.plot <- ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country)) +
+  geom_line(lwd=0.1, alpha=0.5) +
+  geom_line(stat = "smooth", method = "loess", #<<
+            aes(group = continent, color = continent)) +
+  xlab("Year") + ylab("Life Expectancy") +
+  ggtitle("Life expectancy over time")  +
+  theme_bw(base_size = 8) + 
+  facet_grid(cols = vars(continent)) +
+  theme(legend.position = "none")
+my.first.plot
+```
+
+```{r}
+head(gapminder,5)
+ggplot(data = gapminder,
+       aes(x=continent, fill=continent)) +
+  geom_bar( aes(y=..count../12)) +
+  xlab("Continent") + ylab("Countries") +
+  ggtitle("Count of Countries per Continent?") +
+  theme_bw(base_size = 8) 
+```
+
+## Thursday In-class Exercise: Recreating a plot
+```{r}
+movies = readr::read_csv("data/movies.csv") 
+```
+
+```{r}
+ggplot(data = movies[movies$mpaa_rating!="NC-17",], aes(x = audience_score, y = imdb_rating, color=genre)) +
+  geom_point(alpha = 0.5, shape = 16) +
+  xlab("Audience Score") +
+  ylab("IMDB rating") +
+  ggtitle("IMDB Rating vs Audience Score\n(by mpaa Rating)") +
+  scale_x_continuous( trans="identity", breaks=seq(20,100,20), limits=c(10,100)) +
+  scale_y_continuous( trans="identity", breaks=seq(2,8,2), limits=c(1,8)) +
+  facet_wrap(~mpaa_rating) +
+  geom_smooth(method="loess") +
+  guides(fill=guide_legend(ncol=2))
+```
+
+Looks like some data cleaning is needed, and I'm not sure why the `geom_smooth` is placing each one on the **R** rating and not on each facet.
