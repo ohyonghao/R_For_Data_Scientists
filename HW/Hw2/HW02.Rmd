@@ -46,3 +46,212 @@ power <- read.csv('globalpowerplant/global_power_plant_database.csv',
 str(power)
 ```
 
+# Global Power
+
+```{r libraries, echo=F}
+library(ggplot2)
+library(dplyr)
+require(maps)
+library(repr)
+```
+
+```{r peak function}
+# takes a look at the first n/2 and last n/2 rows. If the number is
+# odd then the extra row is given to the tail
+peak <- function( df, rows = 10L ){
+  hrow = as.integer(rows/2L)
+  trow = rows - hrow
+  return(rbind(head(df,hrow), tail(df,trow)))
+}
+```
+
+```{r}
+peak(power,20)
+unique(power$primary_fuel)
+```
+
+Let's look at a splattering of location, source, and capacity. We'll use the `maps` package to be able to draw the map, then use the gps locations
+to place the points. Each point will be a bubble size of generation capacity, and the color of the bubble will be the primary fuel source.
+
+
+```{r world map}
+world_map <- map_data("world")
+ggplot(world_map, aes(x=long, y=lat, group=group)) +
+  geom_polygon(fill="lightgray", colour="white") +
+  xlab("") + ylab("") +
+  theme(legend.position = "none")
+```
+
+
+We want to merge the map data and the data for power plants. To do this we'll run some selection on the `power` dataframe and rename the `country_long` column to the `country` column and follow that by a left outer join.
+
+First we'll take care of cleaning up the generation. Some rows have NA across the board, these we will want to preserve the NAness of it to remove them from further
+processing, but for the ones that have at least one value in the years we'll or the estimated amount, we'll want to calculate a column that uses the available
+information.
+
+To do this we'll make a function, then apply it as a new column to a new dataframe.
+
+```{r}
+estimated_power <- function( x ){
+  if(!is.na(x["estimated_generation_gwh"])){
+    return(x["estimated_generation_gwh"])
+  }
+  
+  cols <- paste("generation_gwh",2013:2017,sep="_")
+  
+  generation <- unlist(x[cols])
+  if(sum(!is.na(generation))){
+    return(mean(generation,na.rm=TRUE))
+  }else{
+    return(NA_real_)
+  }
+}
+```
+
+Now let's test this out first on a subset of the data
+
+```{r}
+# Appraently `apply` coerces each row into a vector rather than a list
+# This then causes a bunch of headaches with it returning a character type vector
+# whereas I want a numeric type
+# by passing in only the numeric columns I need for the function it works without a lot of
+# double checking in the function.
+cols <- c( "estimated_generation_gwh", paste("generation_gwh",2013:2017,sep="_"))
+result <- apply( power[sample(seq_along(1:nrow(power)), size=10 ), cols], 1, FUN=estimated_power )
+
+str(result)
+```
+
+We've tested this out on a random sample, now we'll try this out on the full set. We'll also make
+some splits on the data for generation as there are some plants that make less energy than they
+expend, some are neutral, and most create more energy than they expend.
+
+```{r}
+powermap <- cbind( power[,c("country_long","longitude", "latitude","primary_fuel")], mean_generation_gwh=apply(power[,cols], 1, FUN=estimated_power ) )
+names(powermap)[names(powermap) == "country_long"] <- "region"
+
+pmap.power <- na.omit(powermap)
+pmap.positive.power <- pmap.power[which(pmap.power$mean_generation_gwh > 0),]
+pmap.negative.power <- pmap.power[which(pmap.power$mean_generation_gwh < 0),]
+pmap.neutral.power <- pmap.power[which(pmap.power$mean_generation_gwh ==0),]
+pmap.world <- world_map[,c("long", "lat", "group", "order", "region")]
+
+```
+
+Since we're going to be making a few maps that are the same but for the data they work on
+we'll make a function factory to do this for us. The `geom_point` will be the most likely
+candidate to work with.
+
+```{r}
+plot_data <- function( data, map_plot ){
+  ggplot() +
+  geom_polygon( data=map_plot, aes(x=long, y=lat, group=group), fill="lightgray" ) +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(), axis.text.x = element_blank() ) +
+  xlab("") + ylab("") +
+  geom_point(data=data,aes(x=longitude, y=latitude, color = primary_fuel, size = mean_generation_gwh), alpha=0.25, ) +
+    labs(color="Primary Fuel") +
+  theme(legend.position = "top")
+}
+```
+
+
+```{r}
+pmap.negative.map <- plot_data(pmap.negative.power, pmap.world) +
+  scale_size_continuous(range = c(.1, 10), trans = "reverse", guide=(All=FALSE)) +
+  ggtitle("Negative Power Plants") 
+pmap.negative.map
+```
+
+Seems that the only place in the world with negative power plants are in the US and maybe canada.
+
+
+```{r}
+pmap.map <- plot_data(transform(pmap.power, fct = cut(mean_generation_gwh, c(-5e+04,-1e-01,1e-01,5e+07))), pmap.world)
+pmap.primary_fuel_facet <- pmap.map +
+  scale_size_continuous(range = c(.1, 10), trans = "identity", guide=(All= FALSE) ) +
+  facet_wrap(~fct)
+
+pmap.primary_fuel_facet
+```
+
+This is looking nice, but it's a bit clutered and hard to see. Unfortunately this doesn't have a column called "Continent" or else we would
+create some facets based on continent to hopefully have a better view. 
+Instead we'll make our own grouping of energy categories and do a
+left-join onto it
+
+```{r}
+
+unique(pmap.power$primary_fuel)
+```
+
+Here we see the 15 factors used. We'll categorize them ourselves and then join them in.
+
+```{r}
+pf = data.frame(primary_fuel=unique(pmap.power$primary_fuel))
+pf = cbind(pf, fuel_category=c("Green", "Unknown", "Black", "Black", "Green", "Black", 
+                               "Green", "Green", "Unknown", "Green", "Black", "Green", 
+                               "Green", "Unknown"))
+
+```
+
+
+Now we'll left join it
+
+```{r}
+pmap.category_power <- left_join(pmap.power, pf, by=c("primary_fuel"))
+```
+
+
+```{r}
+pmap.map <- plot_data(pmap.category_power, pmap.world)
+pmap.primary_fuel_category_facet <- pmap.map +
+  scale_size_continuous(range = c(.1, 10), trans = "identity", guide=(All= FALSE) ) +
+  facet_wrap(~fuel_category) +
+  options(repr.plot.width=800, repr.plot.height=500)
+
+pmap.primary_fuel_category_facet
+```
+
+
+Now we're sort of getting somewhere, we see a large distribution of black and green energy
+throughout the globe. Even though it's an interesting looking plot, it doesn't really tell
+us much.
+
+Let's narrow the plot
+
+```{r fig.width=7, fig.height=12}
+pmap.usa <- plot_data(pmap.category_power[which(pmap.category_power$region=="United States of America" & pmap.category_power$longitude < 144),], pmap.world[which(pmap.world$region=="USA" & pmap.world$long < 144),])
+pmap.usa_primary_fuel_category_facet <- pmap.usa +
+  scale_size_continuous(range = c(.1, 10), trans = "identity", guide=(All= FALSE) ) +
+  facet_wrap(~fuel_category, ncol=1) +
+  ggtitle("US Energy Generation by Non/Renewable Sources")
+  
+pmap.usa_primary_fuel_category_facet
+```
+
+This one shows us visually the concentration of power generation by fuel type category. Here we see
+a green suspender going up the West Coast. We also notice there are some areas where black energy
+sources are not present but green sources are, especially in the mid-west.
+
+## Base R
+
+Let's try to look at the annual generation by year. We'll take a slice of the data and
+turn it into a more appropriate
+
+```{r}
+baser.cols <- c(paste("generation_gwh", 2013:2017, sep="_" ))
+baser.power <- power[,baser.cols]
+baser.byyear <- apply(baser.power, 2, sum, na.rm=TRUE)
+baser.df <- data.frame(Year=c(2013:2017))
+baser.df <- cbind(baser.df, Generation=baser.byyear )
+
+
+barplot(Generation ~ Year, data=baser.df,
+        ylim=c(9e+5,6e+6),
+        xlab = "Year",
+        ylab = "Generation")
+title("World Energy Generation by Year")
+```
+
+
