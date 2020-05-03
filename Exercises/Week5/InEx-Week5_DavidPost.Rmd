@@ -1,0 +1,77 @@
+---
+title: "In-class Exercises Week 5"
+author: "David Post"
+date: "5/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set
+
+
+library(tidyr)
+library(dplyr)
+library(purrr)
+library(magrittr)
+library(ggplot2)
+library(shiny)
+library(ggthemes)
+library(nycflights13)
+```
+
+
+## In-class Exercises  {.smaller .build}
+
+1. How many flights to Los Angeles (LAX) did each of the legacy carriers (AA, UA, DL or US) have in May from JFK, and what was their average duration?
+
+2. What was the shortest flight out of each airport in terms of distance? In terms of duration?
+
+3. Which plane (check the tail number) flew out of each New York airport the most?
+
+<div style="color:forestgreen">
+*Optional*
+
+Which date should you fly on if you want to have the lowest possible average departure delay? What about arrival delay? 
+</div>
+
+### 1.
+
+We bring in our data above in the library, then we want to find the number of flights with the
+required conditions.
+
+```{r pipes and pipes}
+flights %>% 
+  filter( carrier == "AA" | carrier == "UA" | carrier == "DL" | carrier== "US" ) %>% 
+  filter(dest == "LAX" & origin== "JFK" & month == 3 ) %>%
+  summarise( flight_count = length(air_time), 
+             mean_duration = mean(air_time, na.rm=T))
+
+``` 
+
+We see that excluding ones from the mean which did not have the flight duration listed, we have 
+that there were 688 flights, averaging 334 munites, or about 5 and a half hours.
+
+### 2.
+
+For this one we'll want to use a `group_by` command to gather them by originating airport and
+then find the minimum.
+```{r short flights}
+flights %>%
+  group_by(origin) %>%
+  summarise( min_dist = min(distance, na.rm=T),
+             min_dur = min(air_time,na.rm = T))
+```
+
+Here we see that the minimum duration is 20-21 minutes, and the distance can be a short drive
+from EWR or about 95 from JFK or LGA.
+
+### 3.
+
+```{r}
+flights %>%
+  filter(!is.na(tailnum)) %>%
+  group_by(origin, tailnum) %>%
+  summarize( dep_per_origin = length(tailnum)) %>%
+  group_by(origin) %>%
+  filter(dep_per_origin == max(dep_per_origin, na.rm=T))
+```
