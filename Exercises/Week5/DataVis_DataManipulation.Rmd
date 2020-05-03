@@ -1,0 +1,919 @@
+---
+title: 'Week 5: Data Visualization and Data Manipulation'
+author: "Daniel Taylor-Rodriguez"
+date: "April 30, 2020"
+output:
+  ioslides_presentation:
+   incremental: false
+subtitle: STAT 399
+---
+
+<style>
+.forceBreak { -webkit-column-break-after: always; break-after: column; }
+</style>
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+options(
+  htmltools.dir.version = FALSE, # for blogdown
+  width = 80,
+  tibble.width = 80
+)
+
+knitr::opts_chunk$set(
+  fig.align = "center"
+)
+
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+
+library(tidyr)
+library(dplyr)
+library(purrr)
+library(magrittr)
+library(ggplot2)
+library(shiny)
+library(ggthemes)
+library(nycflights13)
+```
+
+
+
+## Plan for this Week {.build}
+
+1. Wrapping up [`ggplot2`](https://r4ds.had.co.nz/data-visualisation.html) basics: *statistical transformations*
+
+2. `shinyr` teaser
+
+3. Data and `tibbles`
+
+4. Pipes in `magritt`
+
+5. Data manipulation with `dplyr`
+
+
+
+## Loading the data (from a url) {.smaller}
+
+```{r message=FALSE, echo=TRUE} 
+# Before we were uploading the data from the file locally, using:
+# movies = readr::read_csv("data/movies.csv"), now we are pulling the file 
+# directly from github. To do so, you need the url to the "raw" version
+# of the file
+moviesdatapath <- "https://raw.githubusercontent.com/mine-cetinkaya-rundel/df2016_workshops/master/viz_ggplot2_shiny/data/movies.csv"
+movies = readr::read_csv(url(moviesdatapath))
+movies
+```
+
+
+
+# Statisical Transformations
+
+## Statisical Transformations
+
+```{r eval = F}
+geom_bar(mapping = NULL, 
+         data = NULL, 
+         stat = "bin", 
+         position = "stack",...)
+```
+
+- `stat` statistically transforms input data (bin means bin and count)
+
+- `position` dodges for side-by-side bars or stack for additive bars
+
+
+## Statisical Transformations
+
+```{r fig.height=3.5, fig.width=5, warning=F, message=F}
+ggplot(data = movies, aes(x = audience_score)) + geom_bar(stat="bin") 
+```
+
+
+## Statisical Transformations
+
+```{r fig.height=3.5, fig.width=5, warning=F, message=F}
+ggplot(data = movies, aes(x = audience_score)) + 
+  geom_bar(stat="bin", binwidth = 20) 
+```
+
+`binwidth` specifies the number of bins
+
+
+## Let's do an exercise together {.smaller .build}
+
+- Do the transformation stat="bin" by hand
+
+- Cut `audience_score` into groups (0,20] (20,40] (40,50] (60,80] (80,100] with 
+```{r eval=F}
+cut(movies$audience_score, breaks=seq(0,100,5))
+```
+
+- Count observations by group and save with
+```{r eval=F}
+count.df <- as.data.frame(table(movies$audience_score))
+```
+
+- Use ggplot() + geom_bar()
+
+**Question: what `stat` argument do you need to make the barplot with `count.df`?**
+
+## Let's do an exercise together {.smaller .build}
+
+```{r}
+aud_scorecut <- cut(movies$audience_score, breaks=seq(0,100,20))
+count.df <- as.data.frame(table(aud_scorecut))
+count.df
+```
+## Let's do an exercise together {.smaller .builder}
+
+```{r eval=F}
+ggplot(count.df, aes(x=aud_scorecut, y=Freq)) + 
+  geom_bar(stat="bin")  
+```
+
+<span style="color:forestgreen"> No good, why? </span>
+
+```{r echo=F, error=T}
+ggplot(count.df, aes(x=aud_scorecut, y=Freq)) + 
+  geom_bar(stat="bin")  
+```
+
+## Let's do an exercise together {.smaller .build}
+
+Ok, so how about this? 
+```{r error=T, eval=T}
+ggplot(count.df, aes(x=aud_scorecut)) + 
+  geom_bar(stat="bin")  
+```
+
+
+## Let's do an exercise together {.smaller}
+
+```{r fig.height=3.5, fig.width=5}
+ggplot(count.df, aes(x=aud_scorecut, y=Freq)) + 
+  geom_bar(stat="identity")  
+```
+
+
+
+
+# Plug for possible extra topic: Shiny
+
+## Shiny
+
+- A framework for R to easily turn your analyses into interactive web apps
+
+- No HTML, CSS, or JavaScript knowledge required
+
+
+## Live demo
+
+```{r echo = FALSE, eval = FALSE}
+# Define UI for application that draws a ggplot
+ui <- shinyUI(fluidPage(
+  
+  # Application title
+  titlePanel("Exploring Movies"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+      # Select variable for y-axis
+      selectInput("y",
+                  "Y-axis:",
+                  choices = c("imdb_rating", "imdb_num_votes",
+                              "critics_score", "audience_score",
+                              "runtime"),
+                  selected = "audience_score"
+      ),
+      
+      # Select variable for x-axis
+      selectInput("x",
+                  "X-axis:",
+                  choices = c("imdb_rating", "imdb_num_votes",
+                              "critics_score", "audience_score",
+                              "runtime"),
+                  selected = "critics_score"
+      ),
+      
+      # Select variable for color
+      selectInput("z",
+                  "Color by:",
+                  choices = c("title_type", "genre", "mpaa_rating",
+                              "critics_rating", "audience_rating")
+      ),
+      
+      # Alpha
+      sliderInput("alpha", 
+                  "Alpha:", 
+                  min = 0, max = 1, 
+                  value = 0.5),
+      
+      # Horizontal line separating population and sample input
+      hr(),
+      
+      # Sample size
+      numericInput("n",
+                   "Sample size:",
+                   min = 1,
+                   max = nrow(movies),
+                   value = nrow(movies))
+      
+    ),
+    
+    # Show a plot of the generated distribution
+    mainPanel(
+      plotOutput("exp_plot")
+    )
+  )
+))
+
+# Define server logic required to draw a histogram
+server <- shinyServer(function(input, output) {
+  
+  # Create a new data frame that is a sample of n observations from movies
+  movies_sample <- reactive({
+    movies %>%
+      sample_n(input$n)
+  })
+  
+  output$exp_plot <- renderPlot({
+    ggplot(data = movies_sample(), aes_string(x = input$x, y = input$y, 
+                                              color = input$z)) +
+      geom_smooth(method=lm) +
+      geom_point(alpha = input$alpha)
+  })
+})
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+```
+
+# Tibbles
+
+
+## Modern data frames
+
+`tibble` is a package that *modernizes* data frames
+
+```{r}
+library(tibble)
+class(iris)
+tbl_iris <- as_tibble(iris)
+class(tbl_iris)
+```
+
+## Tibbles vs data.frames {.smaller}
+
+
+### <span style="color:cornflowerblue">Two main differences</span>
+
+* <span style="color:forestgreen">Printing:</span> Print method shows only the first 10 rows and all columns that fit on screen.  Also, the type of each column is reported
+
+* <span style="color:forestgreen">Subsetting:</span> 
+ * `[` with tibble always returns a tibble, whereas with `data.frame` some times return vectors and in others data frames.
+ * Tibbles never do partial matching, and they will generate a warning if the column you are trying to access does not exist
+
+## Fancy Printing
+
+```{r}
+tbl_iris
+```
+
+
+
+
+## Subsetting: tibbles are lazy {.smaller}
+
+```{r}
+tbl_iris[1,]
+```
+
+<div class="columns-2">
+
+```{r}
+tbl_iris[,"Species"]
+```
+
+<p class="forceBreak"></p>
+```{r}
+tibble(
+  x = 1:3, 
+  y = c("A","B","C")
+)
+```
+</div>
+
+
+## Reverting a tbl {.smaller}
+
+```{r}
+d <- tibble(
+  x = 1:3, 
+  y = c("A","B","C")
+)
+
+d
+```
+
+
+<div class="columns-2">
+```{r}
+data.frame(d)
+```
+
+
+<p class="forceBreak"></p>
+```{r}
+class(d) <- "data.frame"
+d
+```
+</div>
+
+## Multiple classes {.smaller}
+
+```{r}
+d <- tibble(
+  x = 1:3, 
+  y = c("A","B","C")
+)
+
+class(d)
+```
+
+
+```{r}
+class(d) <- rev(class(d))
+class(d)
+d
+```
+
+# Nesting Functions with Pipes
+
+
+
+## Pipes in R {.smaller .build}
+
+Think about the following sequence of actions 
+
+<span style="color:cornflowerblue"> *find key $\Rightarrow$ unlock car $\Rightarrow$ start car $\Rightarrow$ drive to school $\Rightarrow$ park* </span>
+
+- In R pseudocode, these as nested functions could look like:
+```{r eval=FALSE}
+park(drive(start_car(find("keys")), to="campus"))
+```
+
+- [Pipes](https://r4ds.had.co.nz/pipes.html) provide a better flowing and more readable structure:
+
+```{r eval=FALSE}
+find("keys") %>%
+    start_car() %>%
+    drive(to="campus") %>%
+    park()
+```
+
+
+## Approaches {.smaller}
+
+These all work, it just comes down to personal preference
+
+Nested:
+```{r, eval=FALSE}
+h( g( f(x), y=1), z=1 )
+```
+
+Piped:
+```{r, eval=FALSE}
+f(x) %>% g(y=1) %>% h(z=1)
+```
+
+Intermediate:
+```{r, eval=FALSE}
+res <- f(x)
+res <- g(res, y=1)
+res <- h(res, z=1)
+```
+
+
+## What about other arguments?  {.smaller .build}
+
+<span style="color:cornflowerblue">If we want to</span>
+
+1. send results to a function argument other than first one or 
+2. use the previous result for multiple arguments.
+
+<span style="color:cornflowerblue">we can refer to the result from previous pipe with `.`</span>
+
+<div class="columns-2">
+
+```{r}
+data.frame(a=1:3,b=3:1) %>% 
+  lm(a~b,data=.)
+```
+
+<p class="forceBreak"></p>
+```{r}
+data.frame(a=1:3,b=3:1) %>% .[[1]]
+```
+
+```{r}
+data.frame(a=1:3,b=3:1) %>% 
+  .[[length(.)]]
+```
+</div>
+
+## In-class example  {.smaller .build}
+
+<div class="centered">
+<div style="color:green">
+
+*Little bunny Foo Foo*
+
+*Went hopping through the forest*
+
+*Scooping up the field mice*
+
+*And bopping them on the head*
+</div>
+</div>
+
+1. Start with the object `FooFoo <- little_bunny()`, and consider the verbs (i.e., functions)  `hop()`, `scoop()`, `bop()`.
+
+2. Using `FooFoo` and the verbs, retell the story in code in all four ways (defining additional inputs as needed):
+
+* Saving each intermediate step as a new object
+* Overwriting the original object many times
+* Composing functions
+* Using pipes
+
+
+## Should you always use pipes? {.smaller}
+
+### <span style="color:orange">NO!! They are pretty useful but do not solve every problem! </span>
+
+Pipes most useful for writing shorter linear sequences of operations. 
+
+<span style="color:orange">**Consider using other options with:**</span>
+
+1. very long sequence of operations
+
+2. multiple inputs or outputs
+
+3. problems with complex dependencies
+
+4. functions that use the current environment
+
+5. functions that use lazy evaluation
+
+
+## Recap on pipes {.smaller .build}
+
+<span style="color:cornflowerblue">Objects on the left of `%>%` passed to first argument of function on the right:</span>
+
+* The piped expression `x %>% g()` yields `g(x)`
+
+<span style="color:cornflowerblue">Other arguments go on the right in the function:</span>
+
+* The piped expression `x %>% f(y)` yields `f(x,y)`
+
+<span style="color:cornflowerblue">If you pipe a function where data not first argument, use `.` in data argument</span>
+
+* The piped expression `x %>% h(y,.)` yields `h(y,x)`
+
+### <span style="color:forestgreen">Keybord shortcut for `%>%` is </span>
+
+* `Ctrl+Shift+M` or `Command+Shift+M`
+
+
+## In-class Exercise {.smaller .build}
+
+Using the `data.frame` `X` below, we want to:
+
+* Create a crosstabulated table for the first and second `x` and `y` (use `table` or `xtabs`)
+
+* Count the number of cases for each value of `y` (use `table`)
+
+* Find `mode` among levels of `x` (use `table` combined with `max` and `names`)
+
+```{r eval=T}
+X <- data.frame(x=sample(c("q","l","m"),50,replace=T),
+                y=sample(c("a","b","c"),50,replace=T),
+                z=sample(c("c","d","e"),50,replace=T))
+str(X)
+```
+
+## In-class Exercise
+
+###  <span style="color:forestgreen">Do this in three ways:</span>
+
+* Taking one intermediate step at a time save to same object
+* Using composite functions
+* Using pipes
+
+
+
+# Manipulating Data: dplyr
+
+## A Grammar of Data Manipulation {.smaller .build}
+
+`dplyr` based on concepts of functions as verbs manipulating data frames.
+
+Single data frame functions / verbs:
+
+* `filter()`: pick rows matching criteria
+* `slice()`: pick rows using index(es)
+* `select()`: pick columns by name
+* `pull()`: grab a column as a vector
+* `rename()`: rename specific columns
+* `arrange()`: reorder rows
+* `mutate()`: add new variables
+* `transmute()`: create new data frame with variables
+* `distinct()`: filter for unique rows
+* `sample_n()` / `sample_frac()`: randomly sample rows
+* `summarise()`: reduce variables to values
+* ... (many more)
+
+
+## dplyr rules for functions
+
+<div style="color:forestgreen">
+1. First argument is *always* a data frame
+
+2. Subsequent arguments say what to do with that data frame
+
+3. *Always* return a data frame
+
+4. Don't modify in place
+
+</div>
+
+
+
+## A Working Example {.smaller}
+
+Let's see `dplyr` in action with the nycflights13 data.
+
+```{r message=FALSE}
+flights
+```
+
+
+
+## <span style="color:cornflowerblue">`filter()` - March flights</span> {.smaller}
+
+```{r}
+flights %>% 
+  filter(month == 3) #%>% head(4)
+```
+
+
+
+## <span style="color:cornflowerblue">`filter()` - Flights first 7 days of March </span>  {.smaller}
+
+```{r}
+flights %>% 
+  filter(month == 3, day <= 7)
+```
+
+
+
+## <span style="color:cornflowerblue">`filter()` - Flights to LAX *or* RDU in March</span>  {.smaller}
+
+```{r}
+flights %>% 
+  filter(dest == "LAX" | dest == "RDU", month==3)
+```
+
+## <span style="color:cornflowerblue">`filter()` - NY to PDX in April and June 1st</span>   {.smaller}
+
+### <span style="color:cornflowerblue">Using `%in%`</span>
+```{r}
+flights %>% 
+  filter(dest == "PDX", month%in%c(4,6), day==1)
+```
+
+
+## <span style="color:cornflowerblue">`slice()` - First 10 flights</span>  {.smaller}
+
+```{r}
+flights %>% slice(1:10)
+```
+
+
+
+## <span style="color:cornflowerblue">`slice()` - Last 5 flights</span>  {.smaller}
+
+```{r}
+flights %>% slice((n()-4):n()) 
+```
+
+
+
+## <span style="color:cornflowerblue">`select()` - Specific Columns</span>  {.smaller}
+
+```{r}
+flights %>% select(year, month, day) %>% head(4)
+```
+
+
+
+## <span style="color:cornflowerblue">`select()` - Exclude Columns</span>  {.smaller}
+
+```{r}
+flights %>% select(-year, -month, -day) %>% head(4)
+```
+
+
+## <span style="color:cornflowerblue">`select()` - Ranges</span>  {.smaller}
+
+```{r}
+flights %>% select(year:day) %>% head(4)
+```
+
+
+
+## <span style="color:cornflowerblue">`select()` - Exclusion Ranges</span>  {.smaller}
+
+```{r}
+flights %>% select(-(year:day)) %>% head(4)
+```
+
+
+## <span style="color:cornflowerblue">`select()` - Matching</span>  {.smaller}
+
+```{r}
+flights %>% select(contains("dep"), 
+                   contains("arr")) %>% head(4)
+```
+
+## <span style="color:cornflowerblue">`select()` - Matching</span>  {.smaller}
+
+```{r}
+flights %>% select(starts_with("dep"), 
+                   ends_with("time")) %>% head(4)
+```
+
+<span style="color:forestgreen">Other helpers: `ends_with`, `matches`, `num_range`, `one_of`, `everything`, `last_col`.</span>
+
+
+
+## <span style="color:cornflowerblue">`select_if()` - Get non-numeric columns</span>  {.smaller}
+
+```{r}
+flights %>% select_if(function(x) !is.numeric(x))
+```
+
+
+
+## <span style="color:cornflowerblue">`pull()`</span>  {.smaller}
+
+```{r}
+names(flights)
+
+# flights %>% pull("year") %>% head()
+# 
+# flights %>% pull(1) %>% head()
+
+flights %>% pull(-1) %>% head()
+```
+
+
+
+
+## <span style="color:cornflowerblue">`rename()` - Change column names</span>  {.smaller}
+
+```{r}
+flights %>% 
+  rename(tail_number = tailnum)
+```
+ 
+
+
+## <span style="color:cornflowerblue">`select()` vs. `rename()`</span>  {.smaller}
+
+```{r}
+flights %>% 
+  select(tail_number = tailnum)
+```
+
+## <span style="color:cornflowerblue">`select()` vs. `rename()`</span>  {.smaller}
+
+```{r}
+flights %>% 
+  rename(tail_number = tailnum)
+```
+
+
+## <span style="color:cornflowerblue">`arrange()` - Sort data </span> {.smaller}
+
+```{r}
+flights %>% 
+  filter(month==3,day==2) %>% 
+  arrange(origin, dest)
+```
+
+
+
+## <span style="color:cornflowerblue">`arrange()` & `desc()` - Descending order </span> {.smaller}
+
+```{r}
+flights %>% 
+  filter(month==3,day==2) %>% 
+  arrange(desc(origin), dest) %>% 
+  select(origin, dest, tailnum)
+```
+
+
+
+## <span style="color:cornflowerblue">`mutate()` - Modify columns</span>  {.smaller}
+
+```{r message=FALSE}
+flights %>% 
+  select(year:day) %>% 
+  mutate(date = paste(year,month,day,sep="/"))
+```
+
+
+
+## <span style="color:cornflowerblue">`transmute()` - Create new tibble from existing columns</span>  {.smaller}
+
+```{r}
+flights %>% select(year:day) %>% transmute(date = paste(year,month,day,sep="/"))
+```
+
+## <span style="color:cornflowerblue">`transmute()` and `ifelse`</span>  {.smaller}
+
+```{r}
+flights %>% 
+  transmute(arrive = ifelse( test = (arr_delay>0), 
+                             yes = "late", no = "early" ) ) %>% head(6)
+```
+
+
+
+## <span style="color:cornflowerblue">`distinct()` - Find unique rows</span>  {.smaller}
+
+```{r}
+flights %>% select(origin, dest) %>% distinct() %>% arrange(origin,dest)
+```
+
+
+
+## <span style="color:cornflowerblue">Sampling rows </span> {.smaller}
+
+```{r}
+flights %>% sample_n(10)
+```
+
+## <span style="color:cornflowerblue">Sampling rows </span> {.smaller}
+
+```{r}
+flights %>% sample_frac(0.00003)
+```
+
+
+
+## <span style="color:cornflowerblue">`summarise()` </span> {.smaller}
+
+```{r}
+flights %>% summarize(n(), min(dep_delay), max(dep_delay))
+```
+
+
+
+```{r}
+flights %>% 
+  summarize(
+    n = n(), 
+    min_dep_delay = min(dep_delay, na.rm = TRUE), 
+    max_dep_delay = max(dep_delay, na.rm = TRUE)
+  )
+```
+
+
+
+## <span style="color:cornflowerblue">`group_by()` </span> {.smaller}
+
+```{r}
+flights %>% group_by(origin)
+```
+<span style="color:forestgreen">Huh? is this doing anything?</span>
+
+
+## <span style="color:cornflowerblue">`group_by()` </span> {.smaller}
+
+```{r}
+flights %>% group_by(origin)
+```
+<span style="color:forestgreen">Prepares a *grouped table* to be used by other methods for aggregating by groups</span>
+
+## <span style="color:cornflowerblue">`group_by()` </span> {.smaller}
+
+```{r}
+flights %>% group_by(origin,carrier)
+```
+<span style="color:forestgreen">Only apparent difference is that the grouping variable and the number of groups are specified</span>
+
+## <span style="color:cornflowerblue">`summarise()` with `group_by()` </span> {.smaller}
+
+```{r}
+flights %>% group_by(origin) %>%
+  summarize(
+    n = n(), 
+    min_dep_delay = min(dep_delay, na.rm = TRUE), 
+    max_dep_delay = max(dep_delay, na.rm = TRUE)
+  )
+```
+
+## <span style="color:cornflowerblue">`summarise()` with `group_by()` </span> {.smaller}
+
+```{r}
+flights %>% group_by(origin, carrier) %>%
+  summarize(
+    n = n(),
+    min_dep_delay = min(dep_delay, na.rm = TRUE),
+    max_dep_delay = max(dep_delay, na.rm = TRUE)
+  ) %>%
+  filter(n > 10000)
+```
+
+
+## <span style="color:cornflowerblue">`mutate()` with `group_by()` </span> {.smaller}
+
+```{r}
+flights %>% group_by(origin) %>%
+  mutate(
+    n = n(), 
+  ) %>%
+  select(origin, n)
+```
+
+## <span style="color:cornflowerblue"> `filter()`, `transmute()`, `ifelse`, `group_by()` and `summarise()`</span>  {.smaller}
+
+```{r}
+flights %>% filter(!is.na(arr_delay),) %>% 
+  transmute(arr_delay_cat = ifelse( test = (arr_delay>0), 
+                                    yes = "late", no = "early" ) ) %>% 
+  group_by(arr_delay_cat) %>% 
+  summarise(n=n())
+```
+
+## <span style="color:cornflowerblue"> Same but recoding with `recode`</span>  {.smaller}
+
+```{r}
+flights %>% transmute(arr_delay_cat = ifelse( test = (arr_delay>0), 
+                                    yes = "late", no = "early" ) ) %>% 
+  group_by(arr_delay_cat) %>% 
+  summarise(n=n()) %>% 
+  mutate(arr_delay_cat=recode(arr_delay_cat,late="bad",early="good"))
+```
+## <span style="color:cornflowerblue"> Same but recoding `NA` with `coalesce`</span>  {.smaller}
+
+```{r}
+flights %>% transmute(arr_delay_cat = ifelse( test = (arr_delay>0), 
+                                    yes = "late", no = "early" ) ) %>% 
+  group_by(arr_delay_cat) %>% 
+  summarise(n=n()) %>% 
+  mutate(arr_delay_cat=coalesce(arr_delay_cat,"no info"))
+```
+
+## <span style="color:cornflowerblue"> Recoding and changing `NA`'s single step</span>  {.smaller}
+
+```{r}
+flights %>% transmute(arr_delay_cat = ifelse( test = (arr_delay>0), 
+                                    yes = "late", no = "early" ) ) %>% 
+  group_by(arr_delay_cat) %>% 
+  summarise(n=n()) %>% 
+  mutate(arr_delay_cat=recode(arr_delay_cat,
+                              late="bad",
+                              early="good",
+                              .missing="no info"))
+```
+
+## In-class Exercises  {.smaller .build}
+
+1. How many flights to Los Angeles (LAX) did each of the legacy carriers (AA, UA, DL or US) have in May from JFK, and what was their average duration?
+
+2. What was the shortest flight out of each airport in terms of distance? In terms of duration?
+
+3. Which plane (check the tail number) flew out of each New York airport the most?
+
+<div style="color:forestgreen">
+*Optional*
+
+Which date should you fly on if you want to have the lowest possible average departure delay? What about arrival delay? 
+</div>
+
+
+## Acknowledgements {.larger}
+
+<span style="color:blue">Materials above are adapted from the following sources:</span>
+
+
+- <span style="color:forestgreen">Colin Rundel's notes from Duke University</span>
+- [`dplyr` and `tidyr` cheatsheets](https://rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+- [Mine Cetinkaya-Rundel's DataFest 2016 Visualization Workshop](https://github.com/mine-cetinkaya-rundel/df2016_workshops/tree/master/viz_ggplot2_shiny)
+- [Hadley Wickham's R4DS](https://r4ds.had.co.nz/data-visualisation.html#aesthetic-mappings)
+- [ggplot2: Elegant Graphics for Data Analysis](https://ggplot2-book.org/index.html)
+- <span style="color:forestgreen">Chuck Lanfear's CSSS508 course at UW</span>
+- Hadley Wickham - [Advanced R](http://adv-r.had.co.nz/)
+
