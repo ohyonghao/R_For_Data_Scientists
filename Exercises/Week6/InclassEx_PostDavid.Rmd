@@ -1,0 +1,83 @@
+---
+title: "Exercises Week 6"
+author: "David Post"
+date: "5/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(readr)
+library(tidyr)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(tidyverse)
+library(nycflights13)
+library(gapminder)
+```
+
+## Tuesday Lecture
+
+### Problem 1
+
+Compute the rate for `table2`, and `table4a + table4b`. You will need to perform four operations:
+
+1. Extract the number of TB cases per country per year
+2. Extract the matching population per country per year
+3. Divide cases by population, and multiply by 10000
+4. Store back in the appropriate place.
+
+```{r message=F,warning=F}
+library(tidyverse)
+table2
+cases <- table2 %>% .[.$type=="cases",] %>% pull(count) 
+table2 %>% 
+  .[.$type=="population",] %>% 
+  mutate(rate=(cases/count)*10000) %>% 
+  select(-type,-count)
+```
+
+
+```{r eval=F,message=F,warning=F}
+table4a
+combined.4a <- table4a %>%
+  rename(cases_1999="1999", cases_2000="2000")
+
+combined.4b <- table4b %>%
+  rename(pop_1999="1999", pop_2000="2000")
+
+combined.4ab <- merge(combined.4a,combined.4b,by=c("country"))
+
+combined.4ab %>%
+  mutate(rate_1999=(.$cases_1999/.$pop_1999)*10000) %>% 
+  mutate(rate_2000=(.$cases_2000/.$pop_2000)*10000)
+#table4a %>% gather(key=year,value=counts,-country) %>% pull()
+```
+
+### Problem 2
+
+Use tb to generate a tibble having as columns iso2, gender and age, as well as the counts for each year from 1980 through 2008.
+
+```{r}
+tb = readr::read_csv(paste0("https://github.com/tidyverse/",
+                            "tidyr/raw/master/vignettes/tb.csv"))
+
+tb %>% 
+  gather(key=group, value=counts, 
+         -iso2, -year, na.rm = TRUE) %>%
+  separate(col=group, into = c("gender","age"), sep=1) %>%
+  mutate(
+    age = case_when(
+      age == "04" ~ "0-4",     age == "514" ~ "5-14",
+      age == "014" ~ "0-14",   age == "1524" ~ "15-24",
+      age == "2534" ~ "25-34", age == "3544" ~ "35-44",
+      age == "4554" ~ "45-54", age == "5564" ~ "55-64",
+      age == "65" ~ "65+",     age == "u" ~ NA_character_
+    )
+  ) %>%
+  spread(key=year, value=counts)
+```
+
