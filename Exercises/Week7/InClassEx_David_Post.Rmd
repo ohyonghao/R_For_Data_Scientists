@@ -1,0 +1,50 @@
+---
+title: "Week7 Exercises"
+author: "David Post"
+date: "5/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## <span style="color:cornflowerblue">In-class Exercise 1</span>   {.smaller .build}
+
+Consider the following matrix
+```{r}
+library(datasets)
+data(state)
+state.x77 %>% summary()
+```
+
+## <span style="color:cornflowerblue">In-class Exercise 1</span>   {.smaller .build}
+
+
+1. Write a function that takes a numeric matrix and transforms each column by substracting by the column mean and dividing by the column standard deviation.  Use this function on the `state.x77` matrix
+
+2. Combining `apply` and `lapply`  write a function to obtain 10 subsamples of from `state.x77` by selecting 20 rows at random each time, and  calculate the column means for each of these subsamples.
+
+3. In problem 2, replace `lapply` by `sapply`
+
+### 1
+
+```{r}
+apply(state.x77, 1, FUN=function(x) (x - mean(x))/sd(x))
+```
+
+### 2
+
+```{r}
+lapply(1:10, function(x){
+  apply(state.x77[sample(1:nrow(state.x77),20),],MARGIN=2, mean)
+})
+```
+
+### 3
+
+```{r}
+sapply(1:10, function(x){
+  apply(state.x77[sample(1:nrow(state.x77),20),],MARGIN=2, mean)
+})
+```
