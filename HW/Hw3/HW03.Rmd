@@ -15,39 +15,13 @@ library(tidyr)
 library(pander)
 ```
 
-# Logistics
 
-- Make a copy of this template to write out your solution, and simply knit it as `HW03.Rmd` (notice that your name should not be here, D2L appends your name to the file automatically).
-- Inside this .Rmd file do not include any personal identifier (such as your name, Odin ID, etc.). 
-- Knit your Rmd file as html and upload both the Rmd and html files with your solution to D2L in `Activities > Assignments > Homework3` before Friday May 15th at 11:59 pm.
+# Part 0: Getting to know the data
 
+We are grabbing three sets of data to analyze the current Coronavirus situation in the US. We have a time series data, daily reports, and some 
+general statistics about each state.
 
-# Objectives for this week's homework
-
-1. Upload `csv` files into R
-
-2. Become proficient at manipulating, summarizing, cleaning, recoding, combining, etc. data in R using `dplyr`, `tidyr`, and `purr`
-
-3. Use exploratory data analysis tools, such as summary statistics tables and figures to determine if a hypothesis has any merit
-
-4. Create informative summary tables and figures
-
-
-# Background and Data
-
-Although our current situation is overwhelming (and by this point some of you may be avoiding the information overload), understanding what is currently happening by getting up-to-date data directly from the source, and extracting one's own conclusions can be empowering. 
-
-By this point of the term you have in your toolbox enough R expertise to tackle the data found [here](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data), which is maintained by Johns Hopkins University.  This dataset is updated daily following the COVID-19 epidemic. I also included a dataset that includes population by state, sex, age and race (treat the population estimates for 2018 as the real values). The datasets included are: 
-
-1. **covid.ts**: one with the daily time series for the confirmed cases at the county level for the US (file description [here](csse_covid_19_data/csse_covid_19_time_series/README.md)), 
-
-2.  **covid.usa.daily**: COVID-19 USA daily state reports with the number of confirmed cases between April 14th and May 7th (file description [here](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data#daily-reports-csse_covid_19_daily_reports)).
-
-3. **popdata**: the Annual State Resident Population Estimates for 5 Race Groups by Age, Sex, and Hispanic Origin (file description [here](https://www2.census.gov/programs-surveys/popest/technical-documentation/file-layouts/2010-2018/sc-est2018-alldata5.pdf)).
-
-Here is the data:
-
-```{r load_data}
+```{r load_data, echo=FALSE, message=FALSE}
 covid.usa.ts <- read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv')
 
 covid.usa.daily <- read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports_us/05-07-2020.csv") 
@@ -56,49 +30,127 @@ popdata <- read_csv("https://www2.census.gov/programs-surveys/popest/tables/2010
 ```
 
 
-The end goal is to produce some insights about the COVID-19 pandemic by states in the US and attempt to determine if the data supports common claims about the virus, about the measures taken, etc.
+```{r}
+names(covid.usa.ts)
+```
 
-# Your Task
+This quick look tells us that the first 11 columns are information, and the last 123 columns are
+the time series data.
 
-## Part 1: Wrangling the COVID-19 data
+```{r}
+head(covid.usa.daily)
+```
 
-1. Identify and list the *primary and foreign keys* for each data frame.
-
-2. Using the time series data in `covid.usa.ts`, which is at the county level, generate a new data frame with the daily time series for each state, call it `covid.usa.states.ts`
-
-3. Create a combined data frame that includes all of the data (without repeating columns with the same info) from `covid.usa.states.ts` and `covid.usa.daily` (with one row per state), call it `covid.usa.all`.
-
-
-## Part 2: Wrangling the population data
-
-1. Using the population data in `pop.data`, using the `AGE` variable to create the character variable `AGE.GRP` with the following levels: `0-5`, `6-18`, `19-40`, `41-70`, `>71`.
-
-2. Aggregate the population variable (`POPESTIMATE2018`) by `STATE` (or `NAME`, which is the state name), `AGE.GRP` and `SEX`, you can also drop whatever variables you don't need to simplify things.  Call this new data.frame `agg.popdata`.
+We see this information is an aggregate of information between April 14th and May 7th as offered
+in the description.
 
 
-## Part 3: Let's combine and use the data
+# Part 1: Wrangling the COVID-19 data
 
-1. Identify the *3 most impacted states* and *3 least impacted states* by COVID-19, where by 'most impacted' I mean the states with the most confirmed cases.  
+Now that we've gotten to see the data a little bit we can now try to wrangle it into a form that we can make some sense out of.
+```{r}
+library(parallel)
+```
 
-2. Reshape `covid.usa.all` so that you have one row for each combination of state and date, call this new data.frame `rs.covid.usa`.  **Note**: after reshaping your file like this, your new `date` column (or however you decide to call it) needs to be converted into a `Date-Time` type variable. For example, if your variable is called `my.date.variable`, you can make this conversion using `as.POSIXct(strptime(my.date.variable,format="%m/%d/%y"))`.
+To get the primary keys we'll write a quick function to test. If all values are unique then it is
+a key.
 
-3. Make a nice visualization of the evolution of confirmed cases for each of the 6 states identified as *most* and *least* impacted (use the `rs.covid.usa` data.frame to create the figure).  
+```{r Primary Keys}
+primary_keys <- function( data, keysonly = FALSE ){
+        if( keysonly ){
+                keys <-primary_keys(data)
+                return(keys[keys==TRUE])
+        }else{
+        mclapply(data, function(x){
+                return( length(unique(x)) == length(x))
+                })
+        }
+}
+```
 
-4. Do you see any interesting change in the trajectories of the corresponding time series on the respective dates when the **stay-at-home** order was put into place in each particular state (of the six you identified above)?  You can find the *stay at home* calendar by state [here](https://www.littler.com/publication-press/publication/stay-top-stay-home-list-statewide).  Produce **meaningful** summaries that enable you to quantify this change (e.g., average number of new cases 30 days before vs 30 days after stay at home order started). One or two summary measures is good.  Make either a table or a figure to display your findings and comment on them.
 
-5. Combining information from `agg.popdata` and `covid.usa.daily` explore if particular age, gender or race groups have been affected more than others across all states.
+Covid USA Time Series"
+```{r}
+str(primary_keys(covid.usa.ts[,c(1:11)], keysonly=TRUE))
+```
 
-6. Think of ONE question that you'd like to answer about the 3 most and 3 least affected states you identified that you would like to explore, **either** with: the data I have provided, or data from the [Census quickfacts webpage](https://www.census.gov/quickfacts/fact/table/PST045219) (see more info on how to extract data from there in the *Some additional Information Section*).  Presente the results of your exploration in whatever way you consider most effective and comment on them.
+The keys for `covid.usa.ts` are the `UID`, and `Combined_Key`. These two each functionaly
+determine the rest of the elements.
+
+Covid USA Daily
+```{r}
+str(primary_keys(covid.usa.daily, keysonly=TRUE))
+```
+
+For the `covid.usa.daily` dataset we find `Province_State`, `Confirmed`, `FIPS`, `Mortality_Rate`,
+and `UID` are keys.
+
+
+```{r}
+tmp <- left_join( covid.usa.ts[,1:11], rename( covid.usa.daily, ), by= c( "UID" = "UID" ) )
+tmp %>% filter(Province_State.x == Province_State.y) %>%
+        select( Province_State.x, Province_State.y )
+```
+
+The foreign keys between these two tables is the `Province_State` which is in `covid.usa.ts` 
+with the foreign key being in `covid.usa.daily`. The `UID` column does not appear to be a
+foreign key.
+
+## Aggregating State Level Data
+
+```{r State Level Time Series}
+covid.usa.states.ts <- covid.usa.ts %>%
+        group_by(Province_State) %>%
+        summarize_at( vars(-names(.)[1:6],-names(.)[8:11]) ,sum,na.rm=TRUE )
+covid.usa.states.ts
+```
+
+## Combining Data
+
+We'll use the foreign key `Province_State` to do a left join on these
+tables.
+
+```{r}
+covid.usa.all <- left_join(covid.usa.daily, covid.usa.states.ts,  by="Province_State")
+```
 
 
 
-## Some additional information 
+# Part 2: Wrangling the population data
 
-From the  [Census quickfacts webpage](https://www.census.gov/quickfacts/fact/table/PST045219) you can download the quickfacts data for all six states that you identified.  These files have a ton of useful information, just check it out for fun.  You can download these data in two ways
- + **Manually**: [here](https://pdx.zoom.us/rec/share/w_JVA7Dw2TpJRs_h2GbHB5AmQdW8X6a81HcW_qAMzUvG32H7Ak_Tndxo4Ct4Mt5O) is a 1 minute video on how to do so
- + **From the link**: In the link below, just replace the acronyms for the states I included for the acronyms of the states you identified.  In my sample link I included Oregon (OR), Washington (WA), Idaho (ID), New York (NY), California (CA), Wisconsin (WI): [https://www.census.gov/quickfacts/fact/table/WI,CA,NY,ID,WA,OR/PST045219](https://www.census.gov/quickfacts/fact/table/WI,CA,NY,ID,WA,OR/PST045219). After replacing the state acronyms, this will automatically generate the file you want on the website. 
- 
- In either case you will need to download the file by clicking on the `more` tab on the right and then on the `csv` icon.  Once the file has downloaded, you can upload the downloaded file into RStudio (if you are working locally on your machine) or RStudio cloud
- 
- 
-Phewww... **have fun and GOOD LUCK**!!
+We'd like to bucket the age groups
+
+```{r}
+names(popdata)
+unique(popdata$AGE)
+```
+
+Trust, but verify, take a random sample and see that the function worked as
+expected.
+```{r}
+pop.data <- popdata %>%
+        mutate(AGE.GRP = case_when(
+                (AGE >= 0  & AGE < 6)  ~ "0-5", 
+                (AGE >= 6  & AGE < 19) ~ "6-18",
+                (AGE >= 19 & AGE < 41) ~ "19-40", 
+                (AGE >= 41 & AGE < 71) ~ "41-70",
+                (AGE >= 71)            ~ "71+" 
+                ) 
+              )
+
+sample_n(pop.data, 50) %>%
+        select(AGE,AGE.GRP)
+```
+
+Now to aggregate the population for 2018.
+
+```{r}
+pop.agg <- pop.data %>%
+        group_by(NAME, AGE.GRP, SEX) %>%
+        select(SUMLEV:AGE,POPESTIMATE2018, AGE.GRP) %>%
+        summarize_at( vars(POPESTIMATE2018), sum, na.rm=TRUE) %>%
+        ungroup()
+head(pop.agg, 5)
+```
+
+# Part 3: Let's combine and use the data
