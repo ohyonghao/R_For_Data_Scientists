@@ -154,3 +154,125 @@ head(pop.agg, 5)
 ```
 
 # Part 3: Let's combine and use the data
+
+### The most impacted states
+
+We'll first reshape our data:
+
+```{r}
+covid.usa.rs <- covid.usa.all %>%
+        pivot_longer(`1/22/20`:`5/13/20`, 
+                     names_to = "Date", 
+                     values_to = "Cases",
+                     values_drop_na = TRUE) %>%
+        mutate(Date = as.POSIXct(strptime(Date, format="%m/%d/%y")))
+covid.usa.rs
+```
+
+
+```{r top_bott_n}
+# Inputs:
+# x: a dataframe
+# n: number of units top and bottom, total number is 2n
+# wt: Column to base ranking on
+top_bott_n <- function( x, n, wt ){
+        wt <- enquo(wt)
+        x %>%
+        filter(!between(dense_rank(!!wt), n+1, n() - n))
+}
+```
+
+
+```{r}
+covid.usa.impacted <- 
+        covid.usa.rs %>%
+                group_by(Province_State) %>%
+                summarize( Cases = sum(Cases,na.rm=TRUE) ) %>%
+                arrange( desc(Cases) ) %>%
+                filter(Cases > 6300) %>%
+                top_bott_n( 3, Cases)
+covid.usa.impacted.top <- covid.usa.impacted %>%
+        top_n(3, Cases)
+covid.usa.impacted.bottom <- covid.usa.impacted %>%
+        top_n(3,-Cases)
+covid.usa.impacted.agegrp <-
+        covid.usa.rs %>%
+                group_by(Province_State,) %>%
+                summarize( Cases = sum(Cases,na.rm=TRUE) ) %>%
+                arrange( desc(Cases) ) %>%
+                filter(Cases > 6300) %>%
+                top_bott_n( 3, Cases)
+covid.usa.impacted
+```
+
+We see the 6 states listed above have the most and least number of cases.
+
+### Visualizing Impact
+
+```{r}
+library(cowplot)
+p <- covid.usa.rs %>%
+        filter( Province_State %in% covid.usa.impacted.top$Province_State & 
+                        Date >= strptime("3/15/20","%m/%d/%y") ) %>%
+        ggplot( mapping=aes(x=`Date`, y=`Cases`, group=Province_State, color=Province_State)) +
+        geom_line() +
+        facet_wrap(~Province_State) +
+        labs( title = "Most Impacted States") + 
+        theme(axis.text.x = element_text(angle = 45, hjust=1))
+p2 <- covid.usa.rs %>%
+        filter( Province_State %in% covid.usa.impacted.bottom$Province_State & 
+                        Date >= strptime("3/15/20","%m/%d/%y") ) %>%
+        ggplot( mapping=aes(x=`Date`, y=`Cases`, group=Province_State, color=Province_State)) +
+        geom_line() + 
+        facet_wrap(~Province_State) +
+        labs( title = "Least Impacted States") + 
+        theme(axis.text.x = element_text(angle = 45, hjust=1))
+cowplot::plot_grid(p,p2, nrow = 2, rel_heights=c(0.5,0.5)) + labs(title = "Covid19 Impact")
+```
+
+### Does Stay at Home Help?
+
+As is often the case this resembles a logrithmic curve that we are starting to plateu on.
+For the three most impacted states there isn't a descernable difference pre or post stay
+at home order. They all were about the same time, March 24th, 21st, and 22nd respectively. Their
+inflection point are all around April 7th.
+
+Looking at the least impacted states, on the other hand, we see Alaska and Montana having
+their inflection point earlier around April 1st, even though they both waited until March
+28th for their stay at home orders. Noticibly missing from the list of stay at home orders
+is Wyoming, and it is noticble that they are experiencing linear growth rather than logrithmic.
+
+### Age, Gender, and Race Impact
+
+```{r Age Gender Race}
+agr.agg <- pop.agg %>%
+        group_by(NAME) %>%
+        summarize(Population =sum(POPESTIMATE2018,na.rm=TRUE) ) %>%
+        select(NAME,Population)
+
+agr.daily <- covid.usa.daily %>%
+        filter(Province_State %in% pop.agg$NAME) %>%
+        mutate( StatePopulation= agr.agg$Population)
+
+agr.join <- left_join(pop.agg, agr.daily, by=c("NAME"="Province_State")) %>%
+        mutate( Confirmed.Age = Confirmed * (POPESTIMATE2018/StatePopulation))
+agr.join$AGE.GRP = as.factor(agr.join$AGE.GRP)
+```
+
+Next we'll take the population makeup and assume the cases have been distributed evenly
+throughout each and see if states with a certain group have higher rates.
+
+```{r}
+#str(agr.join)
+agr.join
+```
+
+```{r}
+agr.p <- agr.join %>% 
+        ggplot(mapping=aes(y=Confirmed.Age,x=AGE.GRP, group=AGE.GRP)) +
+        geom_col() +
+        labs(x="Age Group", y="Estimated Case by Age", title="Distribution Across Age Groups")
+agr.p
+
+
+###
