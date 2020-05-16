@@ -7,6 +7,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(purrr)
+library(dplyr)
 ```
 
 ## <span style="color:cornflowerblue">In-class Exercise 1</span>   {.smaller .build}
@@ -48,3 +50,17 @@ sapply(1:10, function(x){
   apply(state.x77[sample(1:nrow(state.x77),20),],MARGIN=2, mean)
 })
 ```
+
+
+## In-class Exercises
+
+Use `reduce()` to find all the elements that appear in at least one entry of the following list
+
+```{r}
+library(purrr)
+my.list <- map(1:4, ~ sample(1:10, 15, replace = T))
+
+reduce(my.list, c ) %>%
+  unique()
+```
+
